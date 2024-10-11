@@ -31,10 +31,7 @@ func NewRiotClient(apiKey, region string) (*RiotClient, error) {
 	}, nil
 }
 
-func (c *RiotClient) GetRecentMatches(puuid string, count int) ([]string, error) {
-	url := fmt.Sprintf("%s/lol/match/v5/matches/by-puuid/%s/ids?count=%d",
-		fmt.Sprintf(baseURL, c.region), puuid, count)
-
+func (c *RiotClient) request(url string) (*http.Response, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
@@ -49,7 +46,24 @@ func (c *RiotClient) GetRecentMatches(puuid string, count int) ([]string, error)
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, handleAPIErrors(resp)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read error response body: %w", err)
+		}
+
+		return nil, fmt.Errorf("API request failed with status code: %d, body: %s", resp.StatusCode, string(body))
+	}
+
+	return resp, nil
+}
+
+func (c *RiotClient) GetRecentMatches(puuid string, count int) ([]string, error) {
+	url := fmt.Sprintf("%s/lol/match/v5/matches/by-puuid/%s/ids?count=%d",
+		fmt.Sprintf(baseURL, c.region), puuid, count)
+
+	resp, err := c.request(url)
+	if err != nil {
+		return nil, fmt.Errorf("error making request: %w", err)
 	}
 
 	var matchIDs []string
@@ -64,21 +78,9 @@ func (c *RiotClient) GetMatchDetails(matchID string) ([]byte, error) {
 	url := fmt.Sprintf("%s/lol/match/v5/matches/%s",
 		fmt.Sprintf(baseURL, c.region), matchID)
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("error creating request: %w", err)
-	}
-
-	req.Header.Set("X-Riot-Token", c.apiKey)
-
-	resp, err := c.client.Do(req)
+	resp, err := c.request(url)
 	if err != nil {
 		return nil, fmt.Errorf("error making request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, handleAPIErrors(resp)
 	}
 
 	body, err := io.ReadAll(resp.Body)
@@ -87,13 +89,4 @@ func (c *RiotClient) GetMatchDetails(matchID string) ([]byte, error) {
 	}
 
 	return body, nil
-}
-
-func handleAPIErrors(resp *http.Response) error {
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read error response body: %w", err)
-	}
-
-	return fmt.Errorf("API request failed with status code: %d, body: %s", resp.StatusCode, string(body))
 }
