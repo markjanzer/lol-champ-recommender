@@ -13,6 +13,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/joho/godotenv"
 )
 
 type Match struct {
@@ -34,17 +35,75 @@ type Match struct {
 	} `json:"info"`
 }
 
+func ensureDatabaseExists(ctx context.Context, connString string) error {
+	// Parse the connection string
+	config, err := pgx.ParseConfig(connString)
+	if err != nil {
+		return fmt.Errorf("unable to parse connection string: %w", err)
+	}
+
+	fmt.Println(connString)
+
+	// Store the intended database name
+	intendedDB := config.Database
+
+	// Temporarily connect to 'postgres' database
+	config.Database = "postgres"
+	conn, err := pgx.ConnectConfig(ctx, config)
+	if err != nil {
+		return fmt.Errorf("unable to connect to postgres database: %w", err)
+	}
+	defer conn.Close(ctx)
+
+	// Check if the intended database exists
+	var exists bool
+	err = conn.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = $1)", intendedDB).Scan(&exists)
+	if err != nil {
+		return fmt.Errorf("error checking database existence: %w", err)
+	}
+
+	// If the database doesn't exist, create it
+	if !exists {
+		_, err = conn.Exec(ctx, fmt.Sprintf("CREATE DATABASE %s", pgx.Identifier{intendedDB}.Sanitize()))
+		if err != nil {
+			return fmt.Errorf("error creating database: %w", err)
+		}
+		fmt.Printf("Database '%s' created successfully.\n", intendedDB)
+	} else {
+		fmt.Printf("Database '%s' already exists.\n", intendedDB)
+	}
+
+	return nil
+}
+
 func main() {
 	fmt.Println("Starting data collection")
+	ctx := context.Background()
+
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	connString := os.Getenv("DATABASE_URL")
+
+	err = ensureDatabaseExists(ctx, connString)
+	if err != nil {
+		log.Fatalf("Failed to ensure database exists: %v", err)
+	}
 
 	// Connect to database
-	ctx := context.Background()
-	conn, err := pgx.Connect(ctx, os.Getenv("DATABASE_URL"))
+	conn, err := pgx.Connect(ctx, connString)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
 		os.Exit(1)
 	}
 	defer conn.Close(context.Background())
+
+	err = runDiagnostics(ctx, conn)
+	if err != nil {
+		log.Fatalf("Diagnostics failed: %v\n", err)
+	}
 
 	err = initDatabase(ctx, conn)
 	if err != nil {
@@ -73,10 +132,84 @@ func main() {
 		log.Fatalf("Failed to unmarshal match data: %v", err)
 	}
 
-	err := saveMatch(conn, &match)
+	err = saveMatch(conn, &match)
 	if err != nil {
-		log.Fatalf("Failed to save match: %v", err)
+		fmt.Fprintf(os.Stderr, "Failed to save match: %v", err)
 	}
+
+	// Get all matches
+	queries := db.New(conn)
+	matches, err := queries.AllMatches(ctx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error getting matches: %v\n", err)
+		os.Exit(1)
+	}
+
+	for _, match := range matches {
+		fmt.Printf("Match ID: %s\n", match.MatchID)
+		fmt.Printf("Game Start: %s\n", match.GameStart.Time)
+		fmt.Printf("Game Version: %s\n", match.GameVersion)
+		fmt.Printf("Winning Team: %s\n", match.WinningTeam)
+		fmt.Printf("Blue Team: %d, %d, %d, %d, %d\n", match.Blue1ChampionID, match.Blue2ChampionID, match.Blue3ChampionID, match.Blue4ChampionID, match.Blue5ChampionID)
+		fmt.Printf("Red Team: %d, %d, %d, %d, %d\n", match.Red1ChampionID, match.Red2ChampionID, match.Red3ChampionID, match.Red4ChampionID, match.Red5ChampionID)
+		fmt.Println()
+	}
+}
+
+func runDiagnostics(ctx context.Context, db *pgx.Conn) error {
+	// Check current database
+	var currentDB string
+	err := db.QueryRow(ctx, "SELECT current_database()").Scan(&currentDB)
+	if err != nil {
+		return fmt.Errorf("failed to get current database: %w", err)
+	}
+	fmt.Printf("Connected to database: %s\n", currentDB)
+
+	// Check current schema
+	var currentSchema string
+	err = db.QueryRow(ctx, "SELECT current_schema()").Scan(&currentSchema)
+	if err != nil {
+		return fmt.Errorf("failed to get current schema: %w", err)
+	}
+	fmt.Printf("Current schema: %s\n", currentSchema)
+
+	// List all schemas
+	rows, err := db.Query(ctx, "SELECT schema_name FROM information_schema.schemata")
+	if err != nil {
+		return fmt.Errorf("failed to list schemas: %w", err)
+	}
+	defer rows.Close()
+
+	fmt.Println("Available schemas:")
+	for rows.Next() {
+		var schemaName string
+		if err := rows.Scan(&schemaName); err != nil {
+			return fmt.Errorf("failed to scan schema name: %w", err)
+		}
+		fmt.Printf("- %s\n", schemaName)
+	}
+
+	// List all tables in the current schema
+	rows, err = db.Query(ctx, `
+		SELECT table_name 
+		FROM information_schema.tables 
+		WHERE table_schema = current_schema()
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to list tables: %w", err)
+	}
+	defer rows.Close()
+
+	fmt.Println("Tables in current schema:")
+	for rows.Next() {
+		var tableName string
+		if err := rows.Scan(&tableName); err != nil {
+			return fmt.Errorf("failed to scan table name: %w", err)
+		}
+		fmt.Printf("- %s\n", tableName)
+	}
+
+	return nil
 }
 
 func initDatabase(ctx context.Context, db *pgx.Conn) error {

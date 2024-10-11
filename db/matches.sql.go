@@ -11,6 +11,46 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const allMatches = `-- name: AllMatches :many
+SELECT id, match_id, game_start, game_version, winning_team, red_1_champion_id, red_2_champion_id, red_3_champion_id, red_4_champion_id, red_5_champion_id, blue_1_champion_id, blue_2_champion_id, blue_3_champion_id, blue_4_champion_id, blue_5_champion_id FROM matches
+`
+
+func (q *Queries) AllMatches(ctx context.Context) ([]Match, error) {
+	rows, err := q.db.Query(ctx, allMatches)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Match
+	for rows.Next() {
+		var i Match
+		if err := rows.Scan(
+			&i.ID,
+			&i.MatchID,
+			&i.GameStart,
+			&i.GameVersion,
+			&i.WinningTeam,
+			&i.Red1ChampionID,
+			&i.Red2ChampionID,
+			&i.Red3ChampionID,
+			&i.Red4ChampionID,
+			&i.Red5ChampionID,
+			&i.Blue1ChampionID,
+			&i.Blue2ChampionID,
+			&i.Blue3ChampionID,
+			&i.Blue4ChampionID,
+			&i.Blue5ChampionID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const createMatch = `-- name: CreateMatch :exec
 INSERT INTO matches (match_id, game_start, game_version, winning_team, blue_1_champion_id, blue_2_champion_id, blue_3_champion_id, blue_4_champion_id, blue_5_champion_id, red_1_champion_id, red_2_champion_id, red_3_champion_id, red_4_champion_id, red_5_champion_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id
 `
