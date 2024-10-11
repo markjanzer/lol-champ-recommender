@@ -52,7 +52,7 @@ func initDatabase(ctx context.Context, db *pgx.Conn) error {
 	return nil
 }
 
-func saveMatch(conn *pgx.Conn, match *Match) error {
+func saveMatch(queries *db.Queries, match *Match) error {
 	gameStart := pgtype.Timestamp{}
 	err := gameStart.Scan(time.Unix(match.Info.GameStartTimestamp/1000, 0)) // Note: Divided by 1000 to convert milliseconds to seconds
 	if err != nil {
@@ -75,8 +75,6 @@ func saveMatch(conn *pgx.Conn, match *Match) error {
 		Red5ChampionID:  getChampionId(match, 200, 5),
 	}
 
-	// Should I be passing queries or conn?
-	queries := db.New(conn)
 	err = queries.CreateMatch(context.Background(), createMatchParams)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error saving match: %v\n", err)
@@ -114,9 +112,30 @@ func getWinningTeam(match *Match) string {
 	return ""
 }
 
-func createMatch(conn *pgx.Conn, client *api.RiotClient, matchID string) error {
+type Crawler struct {
+	queries *db.Queries
+	client  *api.RiotClient
+	ctx     context.Context
+}
+
+// Should these be capitalized? I'm not sure if they'll be needed outside of this file
+func (c *Crawler) GetRecentMatches(puuid string) ([]string, error) {
+	body, err := c.client.GetRecentMatches(puuid, 20)
+	if err != nil {
+		return nil, fmt.Errorf("error getting recent matches: %w", err)
+	}
+
+	var matchIDs []string
+	if err := json.Unmarshal(body, &matchIDs); err != nil {
+		return nil, fmt.Errorf("error unmarshalling match IDs: %w", err)
+	}
+
+	return matchIDs, nil
+}
+
+func (c *Crawler) CreateMatch(matchID string) error {
 	fmt.Println("Creating match", matchID)
-	matchData, err := client.GetMatchDetails(matchID)
+	matchData, err := c.client.GetMatchDetails(matchID)
 	if err != nil {
 		return fmt.Errorf("error getting match details: %w", err)
 	}
@@ -126,7 +145,7 @@ func createMatch(conn *pgx.Conn, client *api.RiotClient, matchID string) error {
 		return fmt.Errorf("error unmarshalling match data: %w", err)
 	}
 
-	err = saveMatch(conn, &match)
+	err = saveMatch(c.queries, &match)
 	if err != nil {
 		return fmt.Errorf("error saving match: %w", err)
 	}
@@ -134,11 +153,10 @@ func createMatch(conn *pgx.Conn, client *api.RiotClient, matchID string) error {
 	return nil
 }
 
-func printAllMatches(ctx context.Context, queries *db.Queries) {
-	matches, err := queries.AllMatches(ctx)
+func (c *Crawler) PrintAllMatches() error {
+	matches, err := c.queries.AllMatches(c.ctx)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error getting matches: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("error getting matches: %v", err)
 	}
 
 	for _, match := range matches {
@@ -150,6 +168,8 @@ func printAllMatches(ctx context.Context, queries *db.Queries) {
 		fmt.Printf("Red Team: %d, %d, %d, %d, %d\n", match.Red1ChampionID, match.Red2ChampionID, match.Red3ChampionID, match.Red4ChampionID, match.Red5ChampionID)
 		fmt.Println()
 	}
+
+	return nil
 }
 
 func main() {
@@ -175,6 +195,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	queries := db.New(conn)
+
 	// Initialize API client
 	apiKey := os.Getenv("RIOT_API_KEY")
 	region := "americas"
@@ -185,26 +207,29 @@ func main() {
 	}
 	fmt.Println(client)
 
-	// Get recent matches
-	puuid := "b_b4LgRodsouwsgcYp-DhD5Fd0eY2VPd6A8zi1VSsFlnwitTSyWOzModIzDeFSt7_VgUEd4Pt7I0FA"
-	body, err := client.GetRecentMatches(puuid, 20)
-	if err != nil {
-		log.Fatalf("error getting recent matches: %v", err)
+	crawler := Crawler{
+		queries: queries,
+		client:  client,
+		ctx:     ctx,
 	}
 
-	var matchIDs []string
-	if err := json.Unmarshal(body, &matchIDs); err != nil {
-		log.Fatalf("error unmarshalling match IDs: %v", err)
+	// Get recent matches
+	puuid := "b_b4LgRodsouwsgcYp-DhD5Fd0eY2VPd6A8zi1VSsFlnwitTSyWOzModIzDeFSt7_VgUEd4Pt7I0FA"
+
+	matchIDs, err := crawler.GetRecentMatches(puuid)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error getting recent matches: %v\n", err)
 	}
 
 	fmt.Println("Recent matches:", matchIDs)
 
-	// err = createMatch(conn, client, "NA1_5115775401")
-	// if err != nil {
-	// 	fmt.Fprintf(os.Stderr, "Error creating match: %v\n", err)
-	// }
+	err = crawler.CreateMatch("NA1_5115775401")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating match: %v\n", err)
+	}
 
-	// // Get all matches
-	// queries := db.New(conn)
-	// printAllMatches(ctx, queries)
+	err = crawler.PrintAllMatches()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error printing all matches: %v\n", err)
+	}
 }
