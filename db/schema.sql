@@ -1,7 +1,6 @@
-CREATE TABLE matches (
+CREATE TABLE IF NOT EXISTS matches (
   id SERIAL PRIMARY KEY,
-  match_id VARCHAR(255) NOT NULL,
-  region VARCHAR(255) NOT NULL,
+  match_id VARCHAR(255) NOT NULL UNIQUE,
   game_start TIMESTAMP NOT NULL,
   game_version VARCHAR(255) NOT NULL,
   winning_team VARCHAR(255) NOT NULL,
@@ -15,10 +14,12 @@ CREATE TABLE matches (
   blue_3_champion_id INTEGER NOT NULL,
   blue_4_champion_id INTEGER NOT NULL,
   blue_5_champion_id INTEGER NOT NULL
-)
+);
 
-CREATE TABLE champions (
+CREATE TABLE IF NOT EXISTS champions (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   api_id INTEGER NOT NULL
-)
+);
+
+CREATE INDEX IF NOT EXISTS idx_match_id ON matches(match_id);
