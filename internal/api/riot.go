@@ -1,10 +1,13 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
+
+	"golang.org/x/time/rate"
 )
 
 const (
@@ -12,9 +15,10 @@ const (
 )
 
 type RiotClient struct {
-	apiKey string
-	region string
-	client *http.Client
+	apiKey  string
+	region  string
+	client  *http.Client
+	limiter *rate.Limiter
 }
 
 func NewRiotClient(apiKey, region string) (*RiotClient, error) {
@@ -27,10 +31,15 @@ func NewRiotClient(apiKey, region string) (*RiotClient, error) {
 		client: &http.Client{
 			Timeout: time.Second * 10,
 		},
+		limiter: rate.NewLimiter(rate.Every(2*time.Minute/100), 100),
 	}, nil
 }
 
 func (c *RiotClient) request(url string) ([]byte, error) {
+	if err := c.limiter.Wait(context.Background()); err != nil {
+		return nil, fmt.Errorf("rate limiter error: %w", err)
+	}
+
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
