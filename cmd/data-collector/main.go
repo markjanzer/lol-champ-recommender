@@ -114,49 +114,6 @@ func getWinningTeam(match *Match) string {
 	return ""
 }
 
-func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-
-	ctx := context.Background()
-	connString := os.Getenv("DATABASE_URL")
-
-	// Connect to database
-	conn, err := pgx.Connect(ctx, connString)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
-		os.Exit(1)
-	}
-	defer conn.Close(context.Background())
-
-	err = initDatabase(ctx, conn)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error initializing database: %v\n", err)
-		os.Exit(1)
-	}
-
-	// Initialize API client
-	apiKey := os.Getenv("RIOT_API_KEY")
-	region := "americas"
-
-	client, err := api.NewRiotClient(apiKey, region)
-	if err != nil {
-		log.Fatalf("Failed to initialize Riot API client: %v", err)
-	}
-	fmt.Println(client)
-
-	err = createMatch(conn, client, "NA1_5115775401")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating match: %v\n", err)
-	}
-
-	// Get all matches
-	queries := db.New(conn)
-	printAllMatches(ctx, queries)
-}
-
 func createMatch(conn *pgx.Conn, client *api.RiotClient, matchID string) error {
 	fmt.Println("Creating match", matchID)
 	matchData, err := client.GetMatchDetails(matchID)
@@ -193,4 +150,61 @@ func printAllMatches(ctx context.Context, queries *db.Queries) {
 		fmt.Printf("Red Team: %d, %d, %d, %d, %d\n", match.Red1ChampionID, match.Red2ChampionID, match.Red3ChampionID, match.Red4ChampionID, match.Red5ChampionID)
 		fmt.Println()
 	}
+}
+
+func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	ctx := context.Background()
+	connString := os.Getenv("DATABASE_URL")
+
+	// Connect to database
+	conn, err := pgx.Connect(ctx, connString)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
+		os.Exit(1)
+	}
+	defer conn.Close(context.Background())
+
+	err = initDatabase(ctx, conn)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error initializing database: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Initialize API client
+	apiKey := os.Getenv("RIOT_API_KEY")
+	region := "americas"
+
+	client, err := api.NewRiotClient(apiKey, region)
+	if err != nil {
+		log.Fatalf("Failed to initialize Riot API client: %v", err)
+	}
+	fmt.Println(client)
+
+	// Get recent matches
+	puuid := "b_b4LgRodsouwsgcYp-DhD5Fd0eY2VPd6A8zi1VSsFlnwitTSyWOzModIzDeFSt7_VgUEd4Pt7I0FA"
+	body, err := client.GetRecentMatches(puuid, 20)
+	if err != nil {
+		log.Fatalf("error getting recent matches: %v", err)
+	}
+
+	var matchIDs []string
+	if err := json.Unmarshal(body, &matchIDs); err != nil {
+		log.Fatalf("error unmarshalling match IDs: %v", err)
+	}
+
+	fmt.Println("Recent matches:", matchIDs)
+
+	// err = createMatch(conn, client, "NA1_5115775401")
+	// if err != nil {
+	// 	fmt.Fprintf(os.Stderr, "Error creating match: %v\n", err)
+	// }
+
+	// // Get all matches
+	// queries := db.New(conn)
+	// printAllMatches(ctx, queries)
 }

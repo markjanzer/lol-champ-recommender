@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -31,7 +30,7 @@ func NewRiotClient(apiKey, region string) (*RiotClient, error) {
 	}, nil
 }
 
-func (c *RiotClient) request(url string) (*http.Response, error) {
+func (c *RiotClient) request(url string) ([]byte, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
@@ -54,38 +53,38 @@ func (c *RiotClient) request(url string) (*http.Response, error) {
 		return nil, fmt.Errorf("API request failed with status code: %d, body: %s", resp.StatusCode, string(body))
 	}
 
-	return resp, nil
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+
+	return body, nil
 }
 
-func (c *RiotClient) GetRecentMatches(puuid string, count int) ([]string, error) {
+func (c *RiotClient) GetRecentMatches(puuid string, count int) ([]byte, error) {
 	url := fmt.Sprintf("%s/lol/match/v5/matches/by-puuid/%s/ids?count=%d",
 		fmt.Sprintf(baseURL, c.region), puuid, count)
 
-	resp, err := c.request(url)
+	body, err := c.request(url)
 	if err != nil {
 		return nil, fmt.Errorf("error making request: %w", err)
 	}
 
-	var matchIDs []string
-	if err := json.NewDecoder(resp.Body).Decode(&matchIDs); err != nil {
-		return nil, fmt.Errorf("error decoding response: %w", err)
-	}
+	// var matchIDs []string
+	// if err := json.NewDecoder(resp.Body).Decode(&matchIDs); err != nil {
+	// 	return nil, fmt.Errorf("error decoding response: %w", err)
+	// }
 
-	return matchIDs, nil
+	return body, nil
 }
 
 func (c *RiotClient) GetMatchDetails(matchID string) ([]byte, error) {
 	url := fmt.Sprintf("%s/lol/match/v5/matches/%s",
 		fmt.Sprintf(baseURL, c.region), matchID)
 
-	resp, err := c.request(url)
+	body, err := c.request(url)
 	if err != nil {
 		return nil, fmt.Errorf("error making request: %w", err)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("error reading response body: %w", err)
 	}
 
 	return body, nil
