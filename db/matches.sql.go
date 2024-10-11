@@ -12,7 +12,7 @@ import (
 )
 
 const allMatches = `-- name: AllMatches :many
-SELECT id, match_id, game_start, game_version, winning_team, red_1_champion_id, red_2_champion_id, red_3_champion_id, red_4_champion_id, red_5_champion_id, blue_1_champion_id, blue_2_champion_id, blue_3_champion_id, blue_4_champion_id, blue_5_champion_id FROM matches
+SELECT id, match_id, game_start, game_version, winning_team, red_1_champion_id, red_2_champion_id, red_3_champion_id, red_4_champion_id, red_5_champion_id, blue_1_champion_id, blue_2_champion_id, blue_3_champion_id, blue_4_champion_id, blue_5_champion_id, created_at FROM matches
 `
 
 func (q *Queries) AllMatches(ctx context.Context) ([]Match, error) {
@@ -40,6 +40,7 @@ func (q *Queries) AllMatches(ctx context.Context) ([]Match, error) {
 			&i.Blue3ChampionID,
 			&i.Blue4ChampionID,
 			&i.Blue5ChampionID,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -90,4 +91,28 @@ func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) error 
 		arg.Red5ChampionID,
 	)
 	return err
+}
+
+const lastMatches = `-- name: LastMatches :many
+SELECT matches.match_id FROM matches ORDER BY created_at DESC LIMIT 10
+`
+
+func (q *Queries) LastMatches(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, lastMatches)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var match_id string
+		if err := rows.Scan(&match_id); err != nil {
+			return nil, err
+		}
+		items = append(items, match_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

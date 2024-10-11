@@ -35,6 +35,14 @@ type Match struct {
 	} `json:"info"`
 }
 
+type MatchPuuids struct {
+	Info struct {
+		Participants []struct {
+			Puuid string `json:"puuid"`
+		}
+	}
+}
+
 func initDatabase(ctx context.Context, db *pgx.Conn) error {
 	// Read the schema file
 	schemaSQL, err := os.ReadFile("db/schema.sql")
@@ -172,6 +180,56 @@ func (c *Crawler) PrintAllMatches() error {
 	return nil
 }
 
+// func (c *Crawler) Crawl() error {
+// 	for i := 0; i < 3; i++ {
+
+// 	}
+// }
+
+func (c *Crawler) FindNextPlayer() (string, error) {
+	last_matches_ids, err := c.queries.LastMatches(c.ctx)
+	if err != nil {
+		return "", fmt.Errorf("error getting last matches: %v", err)
+	}
+
+	for _, match_id := range last_matches_ids {
+		matchData, err := c.client.GetMatchDetails(match_id)
+		if err != nil {
+			return "", fmt.Errorf("error getting match details: %v", err)
+		}
+
+		var matchPuuids MatchPuuids
+		if err := json.Unmarshal(matchData, &matchPuuids); err != nil {
+			return "", fmt.Errorf("error unmarshalling match data: %w", err)
+		}
+
+		var puuids []string
+		for _, puuid := range matchPuuids.Info.Participants {
+			puuids = append(puuids, puuid.Puuid)
+		}
+
+		for _, puuid := range puuids {
+			has_been_searched, err := c.queries.PlayerHasBeenSearched(c.ctx, puuid)
+			if err != nil {
+				return "", fmt.Errorf("error checking if player has been searched: %v", err)
+			}
+			if !has_been_searched {
+				return puuid, nil
+			}
+
+			last_searched, err := c.queries.LastSearched(c.ctx, puuid)
+			if err != nil {
+				return "", fmt.Errorf("error getting last searched: %v", err)
+			}
+			// Search puuid if it's been longer than 21 days since last search
+			if time.Since(last_searched.Time) > 504*time.Hour {
+				return puuid, nil
+			}
+		}
+	}
+	return "", fmt.Errorf("no new players found")
+}
+
 func main() {
 	err := godotenv.Load()
 	if err != nil {
@@ -205,7 +263,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to initialize Riot API client: %v", err)
 	}
-	fmt.Println(client)
 
 	crawler := Crawler{
 		queries: queries,
@@ -214,22 +271,35 @@ func main() {
 	}
 
 	// Get recent matches
-	puuid := "b_b4LgRodsouwsgcYp-DhD5Fd0eY2VPd6A8zi1VSsFlnwitTSyWOzModIzDeFSt7_VgUEd4Pt7I0FA"
+	// puuid := "b_b4LgRodsouwsgcYp-DhD5Fd0eY2VPd6A8zi1VSsFlnwitTSyWOzModIzDeFSt7_VgUEd4Pt7I0FA"
+
+	puuid, err := crawler.FindNextPlayer()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error finding next player: %v\n", err)
+	}
+	fmt.Println(puuid)
 
 	matchIDs, err := crawler.GetRecentMatches(puuid)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error getting recent matches: %v\n", err)
 	}
 
-	fmt.Println("Recent matches:", matchIDs)
-
-	err = crawler.CreateMatch("NA1_5115775401")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating match: %v\n", err)
+	for _, matchID := range matchIDs {
+		err = crawler.CreateMatch(matchID)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error creating match: %v\n", err)
+		}
 	}
 
-	err = crawler.PrintAllMatches()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error printing all matches: %v\n", err)
-	}
+	// fmt.Println("Recent matches:", matchIDs)
+
+	// err = crawler.CreateMatch("NA1_5115775401")
+	// if err != nil {
+	// 	fmt.Fprintf(os.Stderr, "Error creating match: %v\n", err)
+	// }
+
+	// err = crawler.PrintAllMatches()
+	// if err != nil {
+	// 	fmt.Fprintf(os.Stderr, "Error printing all matches: %v\n", err)
+	// }
 }

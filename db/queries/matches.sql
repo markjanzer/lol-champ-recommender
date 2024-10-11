@@ -3,3 +3,6 @@ INSERT INTO matches (match_id, game_start, game_version, winning_team, blue_1_ch
 
 -- name: AllMatches :many
 SELECT * FROM matches;
+
+-- name: LastMatches :many
+SELECT matches.match_id FROM matches ORDER BY created_at DESC LIMIT 10;

@@ -13,19 +13,22 @@ CREATE TABLE IF NOT EXISTS matches (
   blue_2_champion_id INTEGER NOT NULL,
   blue_3_champion_id INTEGER NOT NULL,
   blue_4_champion_id INTEGER NOT NULL,
-  blue_5_champion_id INTEGER NOT NULL
+  blue_5_champion_id INTEGER NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS champions (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
-  api_id INTEGER NOT NULL
+  api_id INTEGER NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS player_search_log (
   id SERIAL PRIMARY KEY,
   player_id VARCHAR(255) NOT NULL,
-  search_time TIMESTAMP NOT NULL
+  search_time TIMESTAMP NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_match_id ON matches(match_id);

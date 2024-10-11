@@ -9,9 +9,10 @@ import (
 )
 
 type Champion struct {
-	ID    int32
-	Name  string
-	ApiID int32
+	ID        int32
+	Name      string
+	ApiID     int32
+	CreatedAt pgtype.Timestamp
 }
 
 type Match struct {
@@ -30,4 +31,12 @@ type Match struct {
 	Blue3ChampionID int32
 	Blue4ChampionID int32
 	Blue5ChampionID int32
+	CreatedAt       pgtype.Timestamp
+}
+
+type PlayerSearchLog struct {
+	ID         int32
+	PlayerID   string
+	SearchTime pgtype.Timestamp
+	CreatedAt  pgtype.Timestamp
 }
