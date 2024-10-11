@@ -22,4 +22,10 @@ CREATE TABLE IF NOT EXISTS champions (
   api_id INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS player_search_log (
+  id SERIAL PRIMARY KEY,
+  player_id VARCHAR(255) NOT NULL,
+  search_time TIMESTAMP NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_match_id ON matches(match_id);

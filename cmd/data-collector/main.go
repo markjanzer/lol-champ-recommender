@@ -75,6 +75,7 @@ func saveMatch(conn *pgx.Conn, match *Match) error {
 		Red5ChampionID:  getChampionId(match, 200, 5),
 	}
 
+	// Should I be passing queries or conn?
 	queries := db.New(conn)
 	err = queries.CreateMatch(context.Background(), createMatchParams)
 	if err != nil {
@@ -137,7 +138,7 @@ func main() {
 	}
 
 	// Initialize API client
-	apiKey := "RGAPI-7cb21c9d-ad57-41fa-8bec-df91ce7a59c2"
+	apiKey := os.Getenv("RIOT_API_KEY")
 	region := "americas"
 
 	client, err := api.NewRiotClient(apiKey, region)
@@ -146,24 +147,37 @@ func main() {
 	}
 	fmt.Println(client)
 
-	// Get match details
-	matchData, err := client.GetMatchDetails("NA1_5129114460")
+	err = createMatch(conn, client, "NA1_5115775401")
 	if err != nil {
-		log.Fatalf("Failed to get match details: %v", err)
-	}
-
-	var match Match
-	if err := json.Unmarshal(matchData, &match); err != nil {
-		log.Fatalf("Failed to unmarshal match data: %v", err)
-	}
-
-	err = saveMatch(conn, &match)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to save match: %v", err)
+		fmt.Fprintf(os.Stderr, "Error creating match: %v\n", err)
 	}
 
 	// Get all matches
 	queries := db.New(conn)
+	printAllMatches(ctx, queries)
+}
+
+func createMatch(conn *pgx.Conn, client *api.RiotClient, matchID string) error {
+	fmt.Println("Creating match", matchID)
+	matchData, err := client.GetMatchDetails(matchID)
+	if err != nil {
+		return fmt.Errorf("error getting match details: %w", err)
+	}
+
+	var match Match
+	if err := json.Unmarshal(matchData, &match); err != nil {
+		return fmt.Errorf("error unmarshalling match data: %w", err)
+	}
+
+	err = saveMatch(conn, &match)
+	if err != nil {
+		return fmt.Errorf("error saving match: %w", err)
+	}
+
+	return nil
+}
+
+func printAllMatches(ctx context.Context, queries *db.Queries) {
 	matches, err := queries.AllMatches(ctx)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error getting matches: %v\n", err)

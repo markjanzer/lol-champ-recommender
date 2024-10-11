@@ -49,7 +49,7 @@ func (c *RiotClient) GetRecentMatches(puuid string, count int) ([]string, error)
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API request failed with status code: %d", resp.StatusCode)
+		return nil, handleAPIErrors(resp)
 	}
 
 	var matchIDs []string
@@ -78,12 +78,7 @@ func (c *RiotClient) GetMatchDetails(matchID string) ([]byte, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read error response body: %w", err)
-		}
-
-		return nil, fmt.Errorf("API request failed with status code: %d, body: %s", resp.StatusCode, string(body))
+		return nil, handleAPIErrors(resp)
 	}
 
 	body, err := io.ReadAll(resp.Body)
@@ -92,4 +87,13 @@ func (c *RiotClient) GetMatchDetails(matchID string) ([]byte, error) {
 	}
 
 	return body, nil
+}
+
+func handleAPIErrors(resp *http.Response) error {
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read error response body: %w", err)
+	}
+
+	return fmt.Errorf("API request failed with status code: %d, body: %s", resp.StatusCode, string(body))
 }
