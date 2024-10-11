@@ -6,3 +6,6 @@ SELECT * FROM matches;
 
 -- name: LastMatches :many
 SELECT matches.match_id FROM matches ORDER BY created_at DESC LIMIT 10;
+
+-- name: AnyMatches :one
+SELECT EXISTS(SELECT 1 FROM matches);

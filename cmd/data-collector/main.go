@@ -187,6 +187,14 @@ func (c *Crawler) PrintAllMatches() error {
 // }
 
 func (c *Crawler) FindNextPlayer() (string, error) {
+	any_matches, err := c.queries.AnyMatches(c.ctx)
+	if err != nil {
+		return "", fmt.Errorf("error checking if there are any matches: %v", err)
+	}
+	if !any_matches {
+		return "b_b4LgRodsouwsgcYp-DhD5Fd0eY2VPd6A8zi1VSsFlnwitTSyWOzModIzDeFSt7_VgUEd4Pt7I0FA", nil
+	}
+
 	last_matches_ids, err := c.queries.LastMatches(c.ctx)
 	if err != nil {
 		return "", fmt.Errorf("error getting last matches: %v", err)
