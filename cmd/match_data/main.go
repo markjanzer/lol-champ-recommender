@@ -30,104 +30,63 @@ func initDatabase(ctx context.Context, db *pgx.Conn) error {
 }
 
 func createMatchData(ctx context.Context, queries *db.Queries, match db.Match) error {
-	// Matchups/Synergies for Blue1Champion
-	var wins int
-	if match.WinningTeam == "blue" {
+	blueWins := match.WinningTeam == "blue"
+	blueChampions := []int32{match.Blue1ChampionID, match.Blue2ChampionID, match.Blue3ChampionID, match.Blue4ChampionID, match.Blue5ChampionID}
+	redChampions := []int32{match.Red1ChampionID, match.Red2ChampionID, match.Red3ChampionID, match.Red4ChampionID, match.Red5ChampionID}
+
+	// Process all champions
+	for i, champion := range append(blueChampions, redChampions...) {
+		isBlue := i < 5
+		err := processChampion(ctx, queries, champion, blueChampions, redChampions, isBlue, blueWins)
+		if err != nil {
+			return fmt.Errorf("failed to process champion %d: %w", champion, err)
+		}
+	}
+
+	return nil
+}
+
+func processChampion(ctx context.Context, queries *db.Queries, championID int32, blueChampions, redChampions []int32, isBlue, blueWins bool) error {
+	wins := 0
+	if (isBlue && blueWins) || (!isBlue && !blueWins) {
 		wins = 1
-	} else {
-		wins = 0
 	}
 
-	err := queries.CreateOrUpdateSynergy(ctx, db.CreateOrUpdateSynergyParams{
-		Champion1ID: match.Blue1ChampionID,
-		Champion2ID: match.Blue2ChampionID,
-		Wins:        int32(wins),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create or update synergy: %w", err)
+	// Process synergies
+	teammates := blueChampions
+	if !isBlue {
+		teammates = redChampions
+	}
+	for _, teammate := range teammates {
+		if teammate != championID {
+			err := queries.CreateOrUpdateSynergy(ctx, db.CreateOrUpdateSynergyParams{
+				Champion1ID: championID,
+				Champion2ID: teammate,
+				Wins:        int32(wins),
+			})
+			if err != nil {
+				return fmt.Errorf("failed to create or update synergy: %w", err)
+			}
+		}
 	}
 
-	err = queries.CreateOrUpdateSynergy(ctx, db.CreateOrUpdateSynergyParams{
-		Champion1ID: match.Blue1ChampionID,
-		Champion2ID: match.Blue3ChampionID,
-		Wins:        int32(wins),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create or update synergy: %w", err)
+	// Process matchups
+	opponents := redChampions
+	if !isBlue {
+		opponents = blueChampions
+	}
+	for _, opponent := range opponents {
+		err := queries.CreateOrUpdateMatchup(ctx, db.CreateOrUpdateMatchupParams{
+			Champion1ID: championID,
+			Champion2ID: opponent,
+			Wins:        int32(wins),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create or update matchup: %w", err)
+		}
 	}
 
-	err = queries.CreateOrUpdateSynergy(ctx, db.CreateOrUpdateSynergyParams{
-		Champion1ID: match.Blue1ChampionID,
-		Champion2ID: match.Blue4ChampionID,
-		Wins:        int32(wins),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create or update synergy: %w", err)
-	}
-
-	err = queries.CreateOrUpdateSynergy(ctx, db.CreateOrUpdateSynergyParams{
-		Champion1ID: match.Blue1ChampionID,
-		Champion2ID: match.Blue5ChampionID,
-		Wins:        int32(wins),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create or update synergy: %w", err)
-	}
-
-	err = queries.CreateOrUpdateMatchup(ctx, db.CreateOrUpdateMatchupParams{
-		Champion1ID: match.Blue1ChampionID,
-		Champion2ID: match.Red1ChampionID,
-		Wins:        int32(wins),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create or update matchup: %w", err)
-	}
-
-	err = queries.CreateOrUpdateMatchup(ctx, db.CreateOrUpdateMatchupParams{
-		Champion1ID: match.Blue1ChampionID,
-		Champion2ID: match.Red2ChampionID,
-		Wins:        int32(wins),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create or update matchup: %w", err)
-	}
-
-	err = queries.CreateOrUpdateMatchup(ctx, db.CreateOrUpdateMatchupParams{
-		Champion1ID: match.Blue1ChampionID,
-		Champion2ID: match.Red3ChampionID,
-		Wins:        int32(wins),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create or update matchup: %w", err)
-	}
-
-	err = queries.CreateOrUpdateMatchup(ctx, db.CreateOrUpdateMatchupParams{
-		Champion1ID: match.Blue1ChampionID,
-		Champion2ID: match.Red4ChampionID,
-		Wins:        int32(wins),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create or update matchup: %w", err)
-	}
-
-	err = queries.CreateOrUpdateMatchup(ctx, db.CreateOrUpdateMatchupParams{
-		Champion1ID: match.Blue1ChampionID,
-		Champion2ID: match.Red5ChampionID,
-		Wins:        int32(wins),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create or update matchup: %w", err)
-	}
-
-	// Matchups/Synergies for Blue2Champion
-	// Matchups/Synergies for Blue3Champion
-	// Matchups/Synergies for Blue4Champion
-	// Matchups/Synergies for Blue5Champion
-	// Matchups/Synergies for Red1Champion
-	// Matchups/Synergies for Red2Champion
-	// Matchups/Synergies for Red3Champion
-	// Matchups/Synergies for Red4Champion
-	// Matchups/Synergies for Red5Champion
+	return nil
 }
 
 func main() {
@@ -164,7 +123,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	for _, id := range all_match_ids {
+	for index, id := range all_match_ids {
+		fmt.Println("Processing match", index+1, "of", len(all_match_ids))
 		match, err := queries.GetMatch(ctx, id)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error getting match with id %d: %v\n", id, err)

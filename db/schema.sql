@@ -39,8 +39,8 @@ CREATE TABLE IF NOT EXISTS champions (
 
 CREATE TABLE IF NOT EXISTS matchups (
     id SERIAL PRIMARY KEY,
-    champion1_id INTEGER NOT NULL REFERENCES champions(champion_id),
-    champion2_id INTEGER NOT NULL REFERENCES champions(champion_id),
+    champion1_id INTEGER NOT NULL,
+    champion2_id INTEGER NOT NULL,
     wins INTEGER NOT NULL DEFAULT 0,
     games_played INTEGER NOT NULL DEFAULT 0,
     UNIQUE (champion1_id, champion2_id)
@@ -48,8 +48,8 @@ CREATE TABLE IF NOT EXISTS matchups (
 
 CREATE TABLE IF NOT EXISTS synergies (
     id SERIAL PRIMARY KEY,
-    champion1_id INTEGER NOT NULL REFERENCES champions(champion_id),
-    champion2_id INTEGER NOT NULL REFERENCES champions(champion_id),
+    champion1_id INTEGER NOT NULL,
+    champion2_id INTEGER NOT NULL,
     wins INTEGER NOT NULL DEFAULT 0,
     games_played INTEGER NOT NULL DEFAULT 0,
     UNIQUE (champion1_id, champion2_id)
