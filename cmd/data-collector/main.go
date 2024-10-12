@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"lol-champ-recommender/db"
@@ -142,7 +144,16 @@ func (c *Crawler) GetRecentMatches(puuid string) ([]string, error) {
 }
 
 func (c *Crawler) CreateMatch(matchID string) error {
-	fmt.Println("Creating match", matchID)
+	// Check if match already exists
+	matchExists, err := c.queries.MatchExists(c.ctx, matchID)
+	if err != nil {
+		return fmt.Errorf("error checking if match exists: %w", err)
+	}
+	if matchExists {
+		fmt.Println("Match already exists", matchID)
+		return nil
+	}
+
 	matchData, err := c.client.GetMatchDetails(matchID)
 	if err != nil {
 		return fmt.Errorf("error getting match details: %w", err)
@@ -157,34 +168,10 @@ func (c *Crawler) CreateMatch(matchID string) error {
 	if err != nil {
 		return fmt.Errorf("error saving match: %w", err)
 	}
+	fmt.Println("Created match", matchID)
 
 	return nil
 }
-
-func (c *Crawler) PrintAllMatches() error {
-	matches, err := c.queries.AllMatches(c.ctx)
-	if err != nil {
-		return fmt.Errorf("error getting matches: %v", err)
-	}
-
-	for _, match := range matches {
-		fmt.Printf("Match ID: %s\n", match.MatchID)
-		fmt.Printf("Game Start: %s\n", match.GameStart.Time)
-		fmt.Printf("Game Version: %s\n", match.GameVersion)
-		fmt.Printf("Winning Team: %s\n", match.WinningTeam)
-		fmt.Printf("Blue Team: %d, %d, %d, %d, %d\n", match.Blue1ChampionID, match.Blue2ChampionID, match.Blue3ChampionID, match.Blue4ChampionID, match.Blue5ChampionID)
-		fmt.Printf("Red Team: %d, %d, %d, %d, %d\n", match.Red1ChampionID, match.Red2ChampionID, match.Red3ChampionID, match.Red4ChampionID, match.Red5ChampionID)
-		fmt.Println()
-	}
-
-	return nil
-}
-
-// func (c *Crawler) Crawl() error {
-// 	for i := 0; i < 3; i++ {
-
-// 	}
-// }
 
 func (c *Crawler) FindNextPlayer() (string, error) {
 	any_matches, err := c.queries.AnyMatches(c.ctx)
@@ -238,6 +225,50 @@ func (c *Crawler) FindNextPlayer() (string, error) {
 	return "", fmt.Errorf("no new players found")
 }
 
+func (c *Crawler) crawlOnePlayer() error {
+	puuid, err := c.FindNextPlayer()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error finding next player: %v\n", err)
+	}
+	fmt.Println(puuid)
+
+	matchIDs, err := c.GetRecentMatches(puuid)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error getting recent matches: %v\n", err)
+	}
+
+	for _, matchID := range matchIDs {
+		err = c.CreateMatch(matchID)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error creating match: %v\n", err)
+		}
+	}
+
+	// Log the search
+	err = c.queries.LogPlayerSearch(c.ctx, db.LogPlayerSearchParams{
+		PlayerID:   puuid,
+		SearchTime: pgtype.Timestamp{Time: time.Now()},
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error logging player search: %v\n", err)
+	}
+
+	return nil
+}
+
+func (c *Crawler) runCrawler(runCtx context.Context) error {
+	for {
+		select {
+		case <-runCtx.Done():
+			return runCtx.Err()
+		default:
+			if err := c.crawlOnePlayer(); err != nil {
+				fmt.Fprintf(os.Stderr, "Error during crawl: %v\n", err)
+			}
+		}
+	}
+}
+
 func main() {
 	err := godotenv.Load()
 	if err != nil {
@@ -278,36 +309,33 @@ func main() {
 		ctx:     ctx,
 	}
 
-	// Get recent matches
-	// puuid := "b_b4LgRodsouwsgcYp-DhD5Fd0eY2VPd6A8zi1VSsFlnwitTSyWOzModIzDeFSt7_VgUEd4Pt7I0FA"
+	// Create a context that we can cancel
+	runCtx, cancel := context.WithCancel(crawler.ctx)
 
-	puuid, err := crawler.FindNextPlayer()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error finding next player: %v\n", err)
+	// Set up channel to handle shutdown signals
+	shutdown := make(chan os.Signal, 1)
+	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
+
+	// Run the crawler in a goroutine
+	errChan := make(chan error, 1)
+	go func() {
+		errChan <- crawler.runCrawler(runCtx)
+	}()
+
+	// Wait for shutdown signal or error
+	select {
+	case <-shutdown:
+		fmt.Println("Shutdown signal received, stopping crawler...")
+		cancel()
+	case err := <-errChan:
+		fmt.Fprintf(os.Stderr, "Crawler stopped due to error: %v\n", err)
 	}
-	fmt.Println(puuid)
 
-	matchIDs, err := crawler.GetRecentMatches(puuid)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error getting recent matches: %v\n", err)
+	// Wait for the crawler to finish (with a timeout)
+	select {
+	case <-errChan:
+		fmt.Println("Crawler stopped successfully")
+	case <-time.After(30 * time.Second):
+		fmt.Println("Crawler did not stop in time, forcing exit")
 	}
-
-	for _, matchID := range matchIDs {
-		err = crawler.CreateMatch(matchID)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error creating match: %v\n", err)
-		}
-	}
-
-	// fmt.Println("Recent matches:", matchIDs)
-
-	// err = crawler.CreateMatch("NA1_5115775401")
-	// if err != nil {
-	// 	fmt.Fprintf(os.Stderr, "Error creating match: %v\n", err)
-	// }
-
-	// err = crawler.PrintAllMatches()
-	// if err != nil {
-	// 	fmt.Fprintf(os.Stderr, "Error printing all matches: %v\n", err)
-	// }
 }

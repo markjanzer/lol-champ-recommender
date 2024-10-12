@@ -127,3 +127,14 @@ func (q *Queries) LastMatches(ctx context.Context) ([]string, error) {
 	}
 	return items, nil
 }
+
+const matchExists = `-- name: MatchExists :one
+SELECT EXISTS(SELECT 1 FROM matches WHERE match_id = $1)
+`
+
+func (q *Queries) MatchExists(ctx context.Context, matchID string) (bool, error) {
+	row := q.db.QueryRow(ctx, matchExists, matchID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
