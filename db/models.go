@@ -34,9 +34,25 @@ type Match struct {
 	CreatedAt       pgtype.Timestamp
 }
 
+type Matchup struct {
+	ID          int32
+	Champion1ID int32
+	Champion2ID int32
+	Wins        int32
+	GamesPlayed int32
+}
+
 type PlayerSearchLog struct {
 	ID         int32
 	PlayerID   string
 	SearchTime pgtype.Timestamp
 	CreatedAt  pgtype.Timestamp
+}
+
+type Synergy struct {
+	ID          int32
+	Champion1ID int32
+	Champion2ID int32
+	Wins        int32
+	GamesPlayed int32
 }

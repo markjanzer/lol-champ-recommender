@@ -11,40 +11,23 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const allMatches = `-- name: AllMatches :many
-SELECT id, match_id, game_start, game_version, winning_team, red_1_champion_id, red_2_champion_id, red_3_champion_id, red_4_champion_id, red_5_champion_id, blue_1_champion_id, blue_2_champion_id, blue_3_champion_id, blue_4_champion_id, blue_5_champion_id, created_at FROM matches
+const allMatchIds = `-- name: AllMatchIds :many
+SELECT matches.id FROM matches
 `
 
-func (q *Queries) AllMatches(ctx context.Context) ([]Match, error) {
-	rows, err := q.db.Query(ctx, allMatches)
+func (q *Queries) AllMatchIds(ctx context.Context) ([]int32, error) {
+	rows, err := q.db.Query(ctx, allMatchIds)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Match
+	var items []int32
 	for rows.Next() {
-		var i Match
-		if err := rows.Scan(
-			&i.ID,
-			&i.MatchID,
-			&i.GameStart,
-			&i.GameVersion,
-			&i.WinningTeam,
-			&i.Red1ChampionID,
-			&i.Red2ChampionID,
-			&i.Red3ChampionID,
-			&i.Red4ChampionID,
-			&i.Red5ChampionID,
-			&i.Blue1ChampionID,
-			&i.Blue2ChampionID,
-			&i.Blue3ChampionID,
-			&i.Blue4ChampionID,
-			&i.Blue5ChampionID,
-			&i.CreatedAt,
-		); err != nil {
+		var id int32
+		if err := rows.Scan(&id); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -102,6 +85,34 @@ func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) error 
 		arg.Red5ChampionID,
 	)
 	return err
+}
+
+const getMatch = `-- name: GetMatch :one
+SELECT id, match_id, game_start, game_version, winning_team, red_1_champion_id, red_2_champion_id, red_3_champion_id, red_4_champion_id, red_5_champion_id, blue_1_champion_id, blue_2_champion_id, blue_3_champion_id, blue_4_champion_id, blue_5_champion_id, created_at FROM matches WHERE id = $1
+`
+
+func (q *Queries) GetMatch(ctx context.Context, id int32) (Match, error) {
+	row := q.db.QueryRow(ctx, getMatch, id)
+	var i Match
+	err := row.Scan(
+		&i.ID,
+		&i.MatchID,
+		&i.GameStart,
+		&i.GameVersion,
+		&i.WinningTeam,
+		&i.Red1ChampionID,
+		&i.Red2ChampionID,
+		&i.Red3ChampionID,
+		&i.Red4ChampionID,
+		&i.Red5ChampionID,
+		&i.Blue1ChampionID,
+		&i.Blue2ChampionID,
+		&i.Blue3ChampionID,
+		&i.Blue4ChampionID,
+		&i.Blue5ChampionID,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const lastMatches = `-- name: LastMatches :many

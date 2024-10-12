@@ -31,4 +31,28 @@ CREATE TABLE IF NOT EXISTS player_search_log (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS champions (
+    id SERIAL PRIMARY KEY,
+    champion_id INTEGER UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS matchups (
+    id SERIAL PRIMARY KEY,
+    champion1_id INTEGER NOT NULL REFERENCES champions(champion_id),
+    champion2_id INTEGER NOT NULL REFERENCES champions(champion_id),
+    wins INTEGER NOT NULL DEFAULT 0,
+    games_played INTEGER NOT NULL DEFAULT 0,
+    UNIQUE (champion1_id, champion2_id)
+);
+
+CREATE TABLE IF NOT EXISTS synergies (
+    id SERIAL PRIMARY KEY,
+    champion1_id INTEGER NOT NULL REFERENCES champions(champion_id),
+    champion2_id INTEGER NOT NULL REFERENCES champions(champion_id),
+    wins INTEGER NOT NULL DEFAULT 0,
+    games_played INTEGER NOT NULL DEFAULT 0,
+    UNIQUE (champion1_id, champion2_id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_match_id ON matches(match_id);
