@@ -40,6 +40,7 @@ type Matchup struct {
 	Champion2ID int32
 	Wins        int32
 	GamesPlayed int32
+	CreatedAt   pgtype.Timestamp
 }
 
 type PlayerSearchLog struct {
@@ -55,4 +56,5 @@ type Synergy struct {
 	Champion2ID int32
 	Wins        int32
 	GamesPlayed int32
+	CreatedAt   pgtype.Timestamp
 }

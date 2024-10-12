@@ -133,5 +133,9 @@ func main() {
 		}
 
 		err = createMatchData(ctx, queries, match)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error creating match data: %v\n", err)
+			os.Exit(1)
+		}
 	}
 }
