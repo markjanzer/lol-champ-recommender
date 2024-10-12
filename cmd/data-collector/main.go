@@ -225,7 +225,7 @@ func (c *Crawler) FindNextPlayer() (string, error) {
 	return "", fmt.Errorf("no new players found")
 }
 
-func (c *Crawler) crawlOnePlayer() error {
+func (c *Crawler) crawlOnePlayer(ctx context.Context) error {
 	puuid, err := c.FindNextPlayer()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error finding next player: %v\n", err)
@@ -238,9 +238,14 @@ func (c *Crawler) crawlOnePlayer() error {
 	}
 
 	for _, matchID := range matchIDs {
-		err = c.CreateMatch(matchID)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error creating match: %v\n", err)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			err = c.CreateMatch(matchID)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error creating match: %v\n", err)
+			}
 		}
 	}
 
@@ -259,7 +264,11 @@ func (c *Crawler) runCrawler(runCtx context.Context) error {
 		case <-runCtx.Done():
 			return runCtx.Err()
 		default:
-			if err := c.crawlOnePlayer(); err != nil {
+			err := c.crawlOnePlayer(runCtx)
+			if err != nil {
+				if err == runCtx.Err() {
+					return err
+				}
 				fmt.Fprintf(os.Stderr, "Error during crawl: %v\n", err)
 			}
 		}
@@ -317,6 +326,7 @@ func main() {
 	errChan := make(chan error, 1)
 	go func() {
 		errChan <- crawler.runCrawler(runCtx)
+		close(errChan)
 	}()
 
 	// Wait for shutdown signal or error
@@ -332,7 +342,7 @@ func main() {
 	select {
 	case <-errChan:
 		fmt.Println("Crawler stopped successfully")
-	case <-time.After(30 * time.Second):
+	case <-time.After(10 * time.Second):
 		fmt.Println("Crawler did not stop in time, forcing exit")
 	}
 }
