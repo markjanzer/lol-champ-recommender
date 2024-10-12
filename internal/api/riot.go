@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
+	"sync"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -15,11 +17,13 @@ const (
 )
 
 type RiotClient struct {
-	apiKey  string
-	region  string
-	client  *http.Client
-	limiter *rate.Limiter
-	ctx     context.Context
+	apiKey     string
+	region     string
+	client     *http.Client
+	limiter    *rate.Limiter
+	ctx        context.Context
+	mu         sync.Mutex
+	retryAfter time.Time
 }
 
 func NewRiotClient(apiKey, region string, ctx context.Context) (*RiotClient, error) {
@@ -38,6 +42,15 @@ func NewRiotClient(apiKey, region string, ctx context.Context) (*RiotClient, err
 }
 
 func (c *RiotClient) request(url string) ([]byte, error) {
+	c.mu.Lock()
+	if time.Now().Before(c.retryAfter) {
+		sleepDur := time.Until(c.retryAfter)
+		c.mu.Unlock()
+		time.Sleep(sleepDur)
+	} else {
+		c.mu.Unlock()
+	}
+
 	if err := c.limiter.Wait(c.ctx); err != nil {
 		return nil, fmt.Errorf("rate limiter error: %w", err)
 	}
@@ -55,18 +68,26 @@ func (c *RiotClient) request(url string) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read error response body: %w", err)
-		}
-
-		return nil, fmt.Errorf("API request failed with status code: %d, body: %s", resp.StatusCode, string(body))
-	}
-
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+
+	if resp.StatusCode == 429 {
+		c.mu.Lock()
+		if retryAfter := resp.Header.Get("Retry-After"); retryAfter != "" {
+			if seconds, err := strconv.Atoi(retryAfter); err == nil {
+				c.retryAfter = time.Now().Add(time.Duration(seconds) * time.Second)
+			}
+		} else {
+			c.retryAfter = time.Now().Add(10 * time.Second)
+		}
+		c.mu.Unlock()
+		return nil, fmt.Errorf("rate limited, retry after: %s", c.retryAfter)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API request failed with status code: %d, body: %s", resp.StatusCode, string(body))
 	}
 
 	return body, nil
