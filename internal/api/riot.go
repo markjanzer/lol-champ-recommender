@@ -19,15 +19,17 @@ type RiotClient struct {
 	region  string
 	client  *http.Client
 	limiter *rate.Limiter
+	ctx     context.Context
 }
 
-func NewRiotClient(apiKey, region string) (*RiotClient, error) {
+func NewRiotClient(apiKey, region string, ctx context.Context) (*RiotClient, error) {
 	if apiKey == "" {
 		return nil, fmt.Errorf("API key is required")
 	}
 	return &RiotClient{
 		apiKey: apiKey,
 		region: region,
+		ctx:    ctx,
 		client: &http.Client{
 			Timeout: time.Second * 10,
 		},
@@ -36,7 +38,7 @@ func NewRiotClient(apiKey, region string) (*RiotClient, error) {
 }
 
 func (c *RiotClient) request(url string) ([]byte, error) {
-	if err := c.limiter.Wait(context.Background()); err != nil {
+	if err := c.limiter.Wait(c.ctx); err != nil {
 		return nil, fmt.Errorf("rate limiter error: %w", err)
 	}
 
@@ -78,11 +80,6 @@ func (c *RiotClient) GetRecentMatches(puuid string, count int) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error making request: %w", err)
 	}
-
-	// var matchIDs []string
-	// if err := json.NewDecoder(resp.Body).Decode(&matchIDs); err != nil {
-	// 	return nil, fmt.Errorf("error decoding response: %w", err)
-	// }
 
 	return body, nil
 }

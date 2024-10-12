@@ -284,7 +284,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
 		os.Exit(1)
 	}
-	defer conn.Close(context.Background())
+	defer conn.Close(ctx)
 
 	err = initDatabase(ctx, conn)
 	if err != nil {
@@ -298,7 +298,7 @@ func main() {
 	apiKey := os.Getenv("RIOT_API_KEY")
 	region := "americas"
 
-	client, err := api.NewRiotClient(apiKey, region)
+	client, err := api.NewRiotClient(apiKey, region, ctx)
 	if err != nil {
 		log.Fatalf("Failed to initialize Riot API client: %v", err)
 	}
