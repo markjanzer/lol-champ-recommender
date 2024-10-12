@@ -73,8 +73,9 @@ func (c *RiotClient) request(url string) ([]byte, error) {
 }
 
 func (c *RiotClient) GetRecentMatches(puuid string, count int) ([]byte, error) {
-	url := fmt.Sprintf("%s/lol/match/v5/matches/by-puuid/%s/ids?count=%d",
-		fmt.Sprintf(baseURL, c.region), puuid, count)
+	match_type := "ranked"
+	url := fmt.Sprintf("%s/lol/match/v5/matches/by-puuid/%s/ids?count=%d&type=%s",
+		fmt.Sprintf(baseURL, c.region), puuid, count, match_type)
 
 	body, err := c.request(url)
 	if err != nil {
