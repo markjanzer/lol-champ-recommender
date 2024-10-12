@@ -33,7 +33,7 @@ func NewRiotClient(apiKey, region string, ctx context.Context) (*RiotClient, err
 		client: &http.Client{
 			Timeout: time.Second * 10,
 		},
-		limiter: rate.NewLimiter(rate.Every(2*time.Minute/100), 100),
+		limiter: rate.NewLimiter(rate.Every(2*time.Minute/100), 1),
 	}, nil
 }
 

@@ -230,7 +230,7 @@ func (c *Crawler) crawlOnePlayer() error {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error finding next player: %v\n", err)
 	}
-	fmt.Println(puuid)
+	fmt.Printf("Crawling player: %s\n", puuid)
 
 	matchIDs, err := c.GetRecentMatches(puuid)
 	if err != nil {
@@ -245,10 +245,7 @@ func (c *Crawler) crawlOnePlayer() error {
 	}
 
 	// Log the search
-	err = c.queries.LogPlayerSearch(c.ctx, db.LogPlayerSearchParams{
-		PlayerID:   puuid,
-		SearchTime: pgtype.Timestamp{Time: time.Now()},
-	})
+	err = c.queries.LogPlayerSearch(c.ctx, puuid)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error logging player search: %v\n", err)
 	}

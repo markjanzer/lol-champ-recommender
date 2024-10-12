@@ -23,16 +23,11 @@ func (q *Queries) LastSearched(ctx context.Context, playerID string) (pgtype.Tim
 }
 
 const logPlayerSearch = `-- name: LogPlayerSearch :exec
-INSERT INTO player_search_log (player_id, search_time) VALUES ($1, $2) RETURNING id
+INSERT INTO player_search_log (player_id) VALUES ($1) RETURNING id
 `
 
-type LogPlayerSearchParams struct {
-	PlayerID   string
-	SearchTime pgtype.Timestamp
-}
-
-func (q *Queries) LogPlayerSearch(ctx context.Context, arg LogPlayerSearchParams) error {
-	_, err := q.db.Exec(ctx, logPlayerSearch, arg.PlayerID, arg.SearchTime)
+func (q *Queries) LogPlayerSearch(ctx context.Context, playerID string) error {
+	_, err := q.db.Exec(ctx, logPlayerSearch, playerID)
 	return err
 }
 
