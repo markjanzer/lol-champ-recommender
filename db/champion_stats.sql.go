@@ -9,6 +9,35 @@ import (
 	"context"
 )
 
+const allChampions = `-- name: AllChampions :many
+SELECT id, name, api_id, created_at FROM champions
+`
+
+func (q *Queries) AllChampions(ctx context.Context) ([]Champion, error) {
+	rows, err := q.db.Query(ctx, allChampions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Champion
+	for rows.Next() {
+		var i Champion
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.ApiID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const createChampionStats = `-- name: CreateChampionStats :exec
 INSERT INTO champion_stats (data) VALUES ($1)
 `
