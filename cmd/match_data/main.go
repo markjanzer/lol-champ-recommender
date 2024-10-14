@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"lol-champ-recommender/db"
@@ -203,6 +204,29 @@ func addChampionToStats(championStats ChampionDataMap, championID int32, blueCha
 	return nil
 }
 
+func championStatsToJSON(championStats ChampionDataMap) ([]byte, error) {
+	// Create a map to hold the JSON-friendly structure
+	jsonMap := make(map[string]interface{})
+
+	for champID, champData := range championStats {
+		champKey := fmt.Sprintf("%d", champID)
+		champJSON := map[string]interface{}{
+			"winrate":   champData.Winrate,
+			"matchups":  champData.Matchups,
+			"synergies": champData.Synergies,
+		}
+		jsonMap[champKey] = champJSON
+	}
+
+	// Marshal the map to JSON
+	jsonData, err := json.Marshal(jsonMap)
+	if err != nil {
+		return nil, fmt.Errorf("error marshalling champion stats to JSON: %w", err)
+	}
+
+	return jsonData, nil
+}
+
 func main() {
 	// Copied from api_crawler/main.go
 	err := godotenv.Load()
@@ -260,5 +284,16 @@ func main() {
 		}
 	}
 
+	json, err := championStatsToJSON(championStats)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error converting champion stats to JSON: %v\n", err)
+		os.Exit(1)
+	}
+
 	fmt.Println(championStats)
+	err = queries.CreateChampionStats(ctx, json)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating champion stats: %v\n", err)
+		os.Exit(1)
+	}
 }

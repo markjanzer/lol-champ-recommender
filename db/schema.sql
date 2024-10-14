@@ -53,7 +53,8 @@ CREATE TABLE IF NOT EXISTS synergies (
 
 CREATE TABLE IF NOT EXISTS champion_stats (
   id SERIAL PRIMARY KEY,
-  data JSONB NOT NULL
+  data JSONB NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_match_id ON matches(match_id);
