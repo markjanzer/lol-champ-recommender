@@ -51,4 +51,9 @@ CREATE TABLE IF NOT EXISTS synergies (
   UNIQUE (champion1_id, champion2_id)
 );
 
+CREATE TABLE IF NOT EXISTS champion_stats (
+  id SERIAL PRIMARY KEY,
+  data JSONB NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_match_id ON matches(match_id);

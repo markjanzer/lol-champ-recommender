@@ -15,6 +15,11 @@ type Champion struct {
 	CreatedAt pgtype.Timestamp
 }
 
+type ChampionStat struct {
+	ID   int32
+	Data []byte
+}
+
 type Match struct {
 	ID              int32
 	MatchID         string
