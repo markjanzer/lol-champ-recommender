@@ -34,9 +34,18 @@ func initDatabase(ctx context.Context, db *pgx.Conn) error {
 }
 
 // Eventually want to add specific data to this
-type RecommendedChamp struct {
+type ChampionPerformance struct {
 	ChampionID     int32
 	WinProbability float64
+	Synergies      []ChampionInteraction
+	Matchups       []ChampionInteraction
+}
+
+type ChampionInteraction struct {
+	ChampionID     int32
+	WinProbability float64
+	Wins           int
+	Games          int
 }
 
 func contains(arr []int32, val int32) bool {
@@ -48,13 +57,13 @@ func contains(arr []int32, val int32) bool {
 	return false
 }
 
-func sortResults(results []RecommendedChamp) {
+func sortResults(results []ChampionPerformance) {
 	sort.Slice(results, func(i, j int) bool {
 		return results[i].WinProbability > results[j].WinProbability
 	})
 }
 
-func RecommendChampions(ctx context.Context, queries *db.Queries, championStats ChampionDataMap, champSelect ChampSelect) ([]RecommendedChamp, error) {
+func RecommendChampions(ctx context.Context, queries *db.Queries, championStats ChampionDataMap, champSelect ChampSelect) ([]ChampionPerformance, error) {
 	allChampIds, err := queries.AllChampionIds(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error getting all champion IDs: %v", err)
@@ -64,25 +73,36 @@ func RecommendChampions(ctx context.Context, queries *db.Queries, championStats 
 	unavailableChampIDs := append(champSelect.Allies, champSelect.Enemies...)
 	unavailableChampIDs = append(unavailableChampIDs, champSelect.Bans...)
 
-	var results []RecommendedChamp
+	var results []ChampionPerformance
 
 	for _, champID := range allChampIds {
 		if contains(unavailableChampIDs, champID) {
 			continue
 		}
 
-		var synergies []float64
-		var matchups []float64
+		championPerformance := ChampionPerformance{
+			ChampionID: champID,
+		}
 
 		for _, allyID := range champSelect.Allies {
 			synergy, ok := championStats[champID].Synergies[allyID]
 			if !ok {
 				return nil, fmt.Errorf("synergy not found for champion %d and ally %d", champID, allyID)
 			}
+
+			var winProbability float64
 			if synergy.Games == 0 {
-				continue
+				winProbability = 0.50
+			} else {
+				winProbability = float64(synergy.Wins) / float64(synergy.Games)
 			}
-			synergies = append(synergies, float64(synergy.Wins)/float64(synergy.Games))
+
+			championPerformance.Synergies = append(championPerformance.Synergies, ChampionInteraction{
+				ChampionID:     allyID,
+				WinProbability: winProbability,
+				Wins:           synergy.Wins,
+				Games:          synergy.Games,
+			})
 		}
 
 		for _, enemyID := range champSelect.Enemies {
@@ -90,21 +110,29 @@ func RecommendChampions(ctx context.Context, queries *db.Queries, championStats 
 			if !ok {
 				return nil, fmt.Errorf("matchup not found for champion %d and enemy %d", champID, enemyID)
 			}
+			var winProbability float64
 			if matchup.Games == 0 {
-				continue
+				winProbability = 0.50
+			} else {
+				winProbability = float64(matchup.Wins) / float64(matchup.Games)
 			}
-			matchups = append(matchups, float64(matchup.Wins)/float64(matchup.Games))
+			championPerformance.Matchups = append(championPerformance.Matchups, ChampionInteraction{
+				ChampionID:     enemyID,
+				WinProbability: winProbability,
+				Wins:           matchup.Wins,
+				Games:          matchup.Games,
+			})
 		}
 
 		winProbability := 0.0
-		dataPoints := len(synergies) + len(matchups)
+		dataPoints := len(championPerformance.Synergies) + len(championPerformance.Matchups)
 		if dataPoints > 0 {
-			for _, synergy := range synergies {
-				winProbability += synergy
+			for _, synergy := range championPerformance.Synergies {
+				winProbability += synergy.WinProbability
 			}
 
-			for _, matchup := range matchups {
-				winProbability += matchup
+			for _, matchup := range championPerformance.Matchups {
+				winProbability += matchup.WinProbability
 			}
 
 			winProbability /= float64(dataPoints)
@@ -112,10 +140,8 @@ func RecommendChampions(ctx context.Context, queries *db.Queries, championStats 
 			winProbability = 0.50
 		}
 
-		results = append(results, RecommendedChamp{
-			ChampionID:     champID,
-			WinProbability: winProbability,
-		})
+		championPerformance.WinProbability = winProbability
+		results = append(results, championPerformance)
 	}
 
 	sortResults(results)
@@ -198,7 +224,7 @@ type ChampSelect struct {
 	Enemies []int32
 }
 
-func formatAnswer(ctx context.Context, queries *db.Queries, champSelect ChampSelect, results []RecommendedChamp) error {
+func formatAnswer(ctx context.Context, queries *db.Queries, champSelect ChampSelect, results []ChampionPerformance) error {
 	champsToIDs, err := mapChampionsToIds(ctx, queries)
 	if err != nil {
 		return fmt.Errorf("error mapping champions to IDs: %v", err)
@@ -227,11 +253,36 @@ func formatAnswer(ctx context.Context, queries *db.Queries, champSelect ChampSel
 
 	fmt.Println("Recommended:")
 	for _, result := range results {
-		probabilityAsPercentage := result.WinProbability * 100
-		fmt.Printf("%s: %.2f%%\n", IDToName(champsToIDs, result.ChampionID), probabilityAsPercentage)
+		printChampionPerformance(champsToIDs, result)
 	}
 
 	return nil
+}
+
+func printChampionPerformance(champsToIDs map[string]int32, champion ChampionPerformance) {
+	championName := IDToName(champsToIDs, champion.ChampionID)
+	winPercentage := probabilityAsPercentage(champion.WinProbability)
+	matchupsString := printChampionInteractions(champsToIDs, champion.Matchups)
+	synergiesString := printChampionInteractions(champsToIDs, champion.Synergies)
+
+	fmt.Printf("%s: %s — MATCHUPS [ %s ] — SYNERGIES [ %s ]\n",
+		championName,
+		winPercentage,
+		matchupsString,
+		synergiesString)
+}
+
+func probabilityAsPercentage(probability float64) string {
+	return fmt.Sprintf("%.2f%%", probability*100)
+}
+
+func printChampionInteractions(champsToIDs map[string]int32, interactions []ChampionInteraction) string {
+	var result []string
+	for _, interaction := range interactions {
+		championName := IDToName(champsToIDs, interaction.ChampionID)
+		result = append(result, fmt.Sprintf("%s: %d/%d", championName, interaction.Wins, interaction.Games))
+	}
+	return strings.Join(result, ", ")
 }
 
 func IDToName(champions map[string]int32, id int32) string {
