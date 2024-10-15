@@ -9,6 +9,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/joho/godotenv"
@@ -53,15 +54,15 @@ func sortResults(results []RecommendedChamp) {
 	})
 }
 
-func RecommendChampions(ctx context.Context, queries *db.Queries, championStats ChampionDataMap, allies []int32, enemies []int32, bans []int32) ([]RecommendedChamp, error) {
+func RecommendChampions(ctx context.Context, queries *db.Queries, championStats ChampionDataMap, champSelect ChampSelect) ([]RecommendedChamp, error) {
 	allChampIds, err := queries.AllChampionIds(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error getting all champion IDs: %v", err)
 	}
 
 	// Get all champions that are not an ally or an enemy
-	unavailableChampIDs := append(allies, enemies...)
-	unavailableChampIDs = append(unavailableChampIDs, bans...)
+	unavailableChampIDs := append(champSelect.Allies, champSelect.Enemies...)
+	unavailableChampIDs = append(unavailableChampIDs, champSelect.Bans...)
 
 	var results []RecommendedChamp
 
@@ -73,7 +74,7 @@ func RecommendChampions(ctx context.Context, queries *db.Queries, championStats 
 		var synergies []float64
 		var matchups []float64
 
-		for _, allyID := range allies {
+		for _, allyID := range champSelect.Allies {
 			synergy, ok := championStats[champID].Synergies[allyID]
 			if !ok {
 				return nil, fmt.Errorf("synergy not found for champion %d and ally %d", champID, allyID)
@@ -84,7 +85,7 @@ func RecommendChampions(ctx context.Context, queries *db.Queries, championStats 
 			synergies = append(synergies, float64(synergy.Wins)/float64(synergy.Games))
 		}
 
-		for _, enemyID := range enemies {
+		for _, enemyID := range champSelect.Enemies {
 			matchup, ok := championStats[champID].Matchups[enemyID]
 			if !ok {
 				return nil, fmt.Errorf("matchup not found for champion %d and enemy %d", champID, enemyID)
@@ -191,6 +192,57 @@ func mapChampionsToIds(ctx context.Context, queries *db.Queries) (map[string]int
 	return result, nil
 }
 
+type ChampSelect struct {
+	Bans    []int32
+	Allies  []int32
+	Enemies []int32
+}
+
+func formatAnswer(ctx context.Context, queries *db.Queries, champSelect ChampSelect, results []RecommendedChamp) error {
+	champsToIDs, err := mapChampionsToIds(ctx, queries)
+	if err != nil {
+		return fmt.Errorf("error mapping champions to IDs: %v", err)
+	}
+
+	bannedChamps := []string{}
+	for _, ban := range champSelect.Bans {
+		bannedChamps = append(bannedChamps, IDToName(champsToIDs, ban))
+	}
+	bannedChampsString := strings.Join(bannedChamps, ", ")
+	fmt.Println("Bans:", bannedChampsString)
+
+	allyChamps := []string{}
+	for _, ally := range champSelect.Allies {
+		allyChamps = append(allyChamps, IDToName(champsToIDs, ally))
+	}
+	allyChampsString := strings.Join(allyChamps, ", ")
+	fmt.Println("Allies:", allyChampsString)
+
+	enemyChamps := []string{}
+	for _, enemy := range champSelect.Enemies {
+		enemyChamps = append(enemyChamps, IDToName(champsToIDs, enemy))
+	}
+	enemyChampsString := strings.Join(enemyChamps, ", ")
+	fmt.Println("Enemies:", enemyChampsString)
+
+	fmt.Println("Recommended:")
+	for _, result := range results {
+		probabilityAsPercentage := result.WinProbability * 100
+		fmt.Printf("%s: %.2f%%\n", IDToName(champsToIDs, result.ChampionID), probabilityAsPercentage)
+	}
+
+	return nil
+}
+
+func IDToName(champions map[string]int32, id int32) string {
+	for name, champID := range champions {
+		if champID == id {
+			return name
+		}
+	}
+	return "Unknown"
+}
+
 func main() {
 	// Copied from api_crawler/main.go
 	err := godotenv.Load()
@@ -230,13 +282,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Println(mapChampionsToIds(ctx, queries))
+	champSelect := ChampSelect{
+		Bans:    []int32{1, 2, 3},
+		Allies:  []int32{4, 5, 6},
+		Enemies: []int32{7, 8, 9},
+	}
 
-	r, err := RecommendChampions(ctx, queries, championStats, []int32{1, 2, 3}, []int32{4, 5, 6}, []int32{7, 8, 9})
+	r, err := RecommendChampions(ctx, queries, championStats, champSelect)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error recommending champions: %v\n", err)
 		os.Exit(1)
 	}
 
-	fmt.Println(r)
+	err = formatAnswer(ctx, queries, champSelect, r)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error formatting answer: %v\n", err)
+		os.Exit(1)
+	}
 }
