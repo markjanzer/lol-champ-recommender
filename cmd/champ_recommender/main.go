@@ -70,28 +70,43 @@ func RecommendChampions(ctx context.Context, queries *db.Queries, championStats 
 			continue
 		}
 
-		var stats []float64
+		var synergies []float64
+		var matchups []float64
 
 		for _, allyID := range allies {
 			synergy, ok := championStats[champID].Synergies[allyID]
-			if ok {
-				stats = append(stats, float64(synergy.Wins)/float64(synergy.Games))
+			if !ok {
+				return nil, fmt.Errorf("synergy not found for champion %d and ally %d", champID, allyID)
 			}
+			if synergy.Games == 0 {
+				continue
+			}
+			synergies = append(synergies, float64(synergy.Wins)/float64(synergy.Games))
 		}
 
 		for _, enemyID := range enemies {
 			matchup, ok := championStats[champID].Matchups[enemyID]
-			if ok {
-				stats = append(stats, float64(matchup.Wins)/float64(matchup.Games))
+			if !ok {
+				return nil, fmt.Errorf("matchup not found for champion %d and enemy %d", champID, enemyID)
 			}
+			if matchup.Games == 0 {
+				continue
+			}
+			matchups = append(matchups, float64(matchup.Wins)/float64(matchup.Games))
 		}
 
 		winProbability := 0.0
-		if len(stats) > 0 {
-			for _, stat := range stats {
-				winProbability += stat
+		dataPoints := len(synergies) + len(matchups)
+		if dataPoints > 0 {
+			for _, synergy := range synergies {
+				winProbability += synergy
 			}
-			winProbability /= float64(len(stats))
+
+			for _, matchup := range matchups {
+				winProbability += matchup
+			}
+
+			winProbability /= float64(dataPoints)
 		} else {
 			winProbability = 0.50
 		}
