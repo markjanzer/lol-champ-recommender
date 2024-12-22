@@ -18,11 +18,11 @@ func main() {
 	ctx := context.Background()
 
 	// Initialize database
-	db, err := database.Initialize(ctx)
+	dbConn, err := database.Initialize(ctx)
 	if err != nil {
 		log.Fatalf("Error initializing database: %v", err)
 	}
-	defer db.Close(ctx)
+	defer dbConn.Close(ctx)
 
 	// Initialize API client
 	apiKey := os.Getenv("RIOT_API_KEY")
@@ -34,7 +34,7 @@ func main() {
 	}
 
 	crawler := crawler.Crawler{
-		Queries: db.Queries,
+		Queries: dbConn.Queries,
 		Client:  client,
 		Ctx:     ctx,
 	}

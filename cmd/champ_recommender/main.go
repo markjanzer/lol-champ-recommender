@@ -6,32 +6,12 @@ import (
 	"fmt"
 	"log"
 	"lol-champ-recommender/db"
+	"lol-champ-recommender/internal/database"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
-
-	"github.com/jackc/pgx/v5"
-	"github.com/joho/godotenv"
 )
-
-// Copied from api_crawler/main.go
-func initDatabase(ctx context.Context, db *pgx.Conn) error {
-	// Read the schema file
-	schemaSQL, err := os.ReadFile("db/schema.sql")
-	if err != nil {
-		return fmt.Errorf("failed to read schema file: %w", err)
-	}
-
-	// Execute the schema SQL
-	_, err = db.Exec(ctx, string(schemaSQL))
-	if err != nil {
-		return fmt.Errorf("failed to execute schema SQL: %w", err)
-	}
-
-	fmt.Println("Database schema created successfully")
-	return nil
-}
 
 // Eventually want to add specific data to this
 type ChampionPerformance struct {
@@ -295,33 +275,17 @@ func IDToName(champions map[string]int32, id int32) string {
 }
 
 func main() {
-	// Copied from api_crawler/main.go
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-
 	ctx := context.Background()
-	connString := os.Getenv("DATABASE_URL")
 
-	// Connect to database
-	conn, err := pgx.Connect(ctx, connString)
+	// Initialize database
+	db, err := database.Initialize(ctx)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
-		os.Exit(1)
+		log.Fatalf("Error initializing database: %v", err)
 	}
-	defer conn.Close(ctx)
-
-	err = initDatabase(ctx, conn)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error initializing database: %v\n", err)
-		os.Exit(1)
-	}
-
-	queries := db.New(conn)
+	defer db.Close(ctx)
 
 	// New code from here on
-	recordWithStats, err := queries.GetLastChampionStats(ctx)
+	recordWithStats, err := db.Queries.GetLastChampionStats(ctx)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error getting last champion stats: %v\n", err)
 		os.Exit(1)
@@ -339,13 +303,13 @@ func main() {
 		Enemies: []int32{7, 8, 9},
 	}
 
-	r, err := RecommendChampions(ctx, queries, championStats, champSelect)
+	r, err := RecommendChampions(ctx, db.Queries, championStats, champSelect)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error recommending champions: %v\n", err)
 		os.Exit(1)
 	}
 
-	err = formatAnswer(ctx, queries, champSelect, r)
+	err = formatAnswer(ctx, db.Queries, champSelect, r)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error formatting answer: %v\n", err)
 		os.Exit(1)
