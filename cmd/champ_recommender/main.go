@@ -277,14 +277,12 @@ func IDToName(champions map[string]int32, id int32) string {
 func main() {
 	ctx := context.Background()
 
-	// Initialize database
 	db, err := database.Initialize(ctx)
 	if err != nil {
 		log.Fatalf("Error initializing database: %v", err)
 	}
 	defer db.Close(ctx)
 
-	// New code from here on
 	recordWithStats, err := db.Queries.GetLastChampionStats(ctx)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error getting last champion stats: %v\n", err)

@@ -45,6 +45,56 @@ type MatchPuuids struct {
 	}
 }
 
+func (c *Crawler) RunCrawler(runCtx context.Context) error {
+	for {
+		select {
+		case <-runCtx.Done():
+			return runCtx.Err()
+		default:
+			puuid, err := c.findNextPlayer()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error finding next player: %v\n", err)
+			}
+			fmt.Printf("Crawling player: %s\n", puuid)
+
+			err = c.crawlPlayer(runCtx, puuid)
+			if err != nil {
+				if err == runCtx.Err() {
+					return err
+				}
+				fmt.Fprintf(os.Stderr, "Error during crawl: %v\n", err)
+			}
+		}
+	}
+}
+
+func (c *Crawler) crawlPlayer(ctx context.Context, puuid string) error {
+	matchIDs, err := c.getRecentMatches(puuid)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error getting recent matches: %v\n", err)
+	}
+
+	for _, matchID := range matchIDs {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			err = c.createMatch(matchID)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error creating match: %v\n", err)
+			}
+		}
+	}
+
+	// Log the search
+	err = c.Queries.LogPlayerSearch(c.Ctx, puuid)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error logging player search: %v\n", err)
+	}
+
+	return nil
+}
+
 func saveMatch(queries *db.Queries, match *Match) error {
 	gameStart := pgtype.Timestamp{}
 	err := gameStart.Scan(time.Unix(match.Info.GameStartTimestamp/1000, 0)) // Note: Divided by 1000 to convert milliseconds to seconds
@@ -90,8 +140,6 @@ func getChampionId(match *Match, teamID int, position int) int32 {
 	return 0
 }
 
-// Helper function to determine winning team
-// Probably should have an error if neither works
 func getWinningTeam(match *Match) string {
 	for _, team := range match.Info.Teams {
 		if team.Win {
@@ -102,11 +150,10 @@ func getWinningTeam(match *Match) string {
 			}
 		}
 	}
-	return ""
+	panic("No winning team found")
 }
 
-// Should these be capitalized? I'm not sure if they'll be needed outside of this file
-func (c *Crawler) GetRecentMatches(puuid string) ([]string, error) {
+func (c *Crawler) getRecentMatches(puuid string) ([]string, error) {
 	body, err := c.Client.GetRecentMatches(puuid, 20)
 	if err != nil {
 		return nil, fmt.Errorf("error getting recent matches: %w", err)
@@ -120,7 +167,7 @@ func (c *Crawler) GetRecentMatches(puuid string) ([]string, error) {
 	return matchIDs, nil
 }
 
-func (c *Crawler) CreateMatch(matchID string) error {
+func (c *Crawler) createMatch(matchID string) error {
 	// Check if match already exists
 	matchExists, err := c.Queries.MatchExists(c.Ctx, matchID)
 	if err != nil {
@@ -150,13 +197,15 @@ func (c *Crawler) CreateMatch(matchID string) error {
 	return nil
 }
 
-func (c *Crawler) FindNextPlayer() (string, error) {
+var seedPlayerUUID = "b_b4LgRodsouwsgcYp-DhD5Fd0eY2VPd6A8zi1VSsFlnwitTSyWOzModIzDeFSt7_VgUEd4Pt7I0FA"
+
+func (c *Crawler) findNextPlayer() (string, error) {
 	any_matches, err := c.Queries.AnyMatches(c.Ctx)
 	if err != nil {
 		return "", fmt.Errorf("error checking if there are any matches: %v", err)
 	}
 	if !any_matches {
-		return "b_b4LgRodsouwsgcYp-DhD5Fd0eY2VPd6A8zi1VSsFlnwitTSyWOzModIzDeFSt7_VgUEd4Pt7I0FA", nil
+		return seedPlayerUUID, nil
 	}
 
 	last_matches_ids, err := c.Queries.LastMatches(c.Ctx)
@@ -200,54 +249,4 @@ func (c *Crawler) FindNextPlayer() (string, error) {
 		}
 	}
 	return "", fmt.Errorf("no new players found")
-}
-
-func (c *Crawler) crawlOnePlayer(ctx context.Context) error {
-	puuid, err := c.FindNextPlayer()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error finding next player: %v\n", err)
-	}
-	fmt.Printf("Crawling player: %s\n", puuid)
-
-	matchIDs, err := c.GetRecentMatches(puuid)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error getting recent matches: %v\n", err)
-	}
-
-	for _, matchID := range matchIDs {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-			err = c.CreateMatch(matchID)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error creating match: %v\n", err)
-			}
-		}
-	}
-
-	// Log the search
-	err = c.Queries.LogPlayerSearch(c.Ctx, puuid)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error logging player search: %v\n", err)
-	}
-
-	return nil
-}
-
-func (c *Crawler) RunCrawler(runCtx context.Context) error {
-	for {
-		select {
-		case <-runCtx.Done():
-			return runCtx.Err()
-		default:
-			err := c.crawlOnePlayer(runCtx)
-			if err != nil {
-				if err == runCtx.Err() {
-					return err
-				}
-				fmt.Fprintf(os.Stderr, "Error during crawl: %v\n", err)
-			}
-		}
-	}
 }
