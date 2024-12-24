@@ -1,7 +1,8 @@
 from utils.db_connector import get_champion_stats, get_first_match
+import pandas as pd
 import json
 import itertools
-from typing import TypedDict
+from typing import TypedDict, Tuple
 
 
 def get_teams(match):
@@ -37,20 +38,14 @@ def get_all_combinations(numbers):
   return list(itertools.combinations(numbers, 2))
 
 def predict_win_with_average(blue_team_synergy: float, red_team_synergy: float, blue_team_matchup: float) -> float:
-  red_factor = 1 - blue_team_synergy
+  red_factor = 1 - red_team_synergy
   return (blue_team_synergy + red_factor + blue_team_matchup) / 3
 
 def predict_win_with_weighted_average(blue_team_synergy: float, red_team_synergy: float, blue_team_matchup: float) -> float:
-  red_factor = 1 - blue_team_synergy
+  red_factor = 1 - red_team_synergy
   return (0.25 * blue_team_synergy + 0.25 * red_factor + 0.5 * blue_team_matchup)
 
-
-if __name__ == "__main__":
-  print("In main")
-  data = get_champion_stats()
-  champion_stats = data.data[0]
-
-  match = get_first_match()
+def match_stats(match: pd.DataFrame, champion_stats: dict) -> Tuple[float, float, float]:
   blue_team, red_team = get_teams(match)
 
   blue_team_combinations = get_all_combinations(blue_team)
@@ -84,15 +79,24 @@ if __name__ == "__main__":
   blue_team_winrates = [get_winrate(matchup) for matchup in matchups_from_blue_team]
   blue_team_matchup = sum(blue_team_winrates) / len(blue_team_winrates)
 
+  return blue_team_synergy, red_team_synergy, blue_team_matchup
 
-  print(blue_team_synergy)
-  print(red_team_synergy)
-  print(blue_team_matchup)
+def average_prediction(match: pd.DataFrame, matchup_stats: dict) -> float:
+  blue_team_synergy, red_team_synergy, blue_team_matchup = match_stats(match, matchup_stats)
+  return predict_win_with_average(blue_team_synergy, red_team_synergy, blue_team_matchup)
 
-  print("Average Prediction")
-  print(predict_win_with_average(blue_team_synergy, red_team_synergy, blue_team_matchup))
-  print("Weighted Prediction")
-  print(predict_win_with_weighted_average(blue_team_synergy, red_team_synergy, blue_team_matchup))
+def weighted_prediction(match: pd.DataFrame, matchup_stats: dict) -> float:
+  blue_team_synergy, red_team_synergy, blue_team_matchup = match_stats(match, matchup_stats)
+  return predict_win_with_weighted_average(blue_team_synergy, red_team_synergy, blue_team_matchup)
+
+if __name__ == "__main__":
+  print("In main")
+  data = get_champion_stats()
+  champion_stats = data.data[0]
+
+  match = get_first_match()
+  print(average_prediction(match, champion_stats))
+  print(weighted_prediction(match, champion_stats))
 
   result = match.iloc[0]['winning_team'] == 'blue'
   print(result)
