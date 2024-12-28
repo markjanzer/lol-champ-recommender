@@ -33,20 +33,6 @@ func (q *Queries) AllChampionIds(ctx context.Context) ([]int32, error) {
 	return items, nil
 }
 
-const createChampion = `-- name: CreateChampion :exec
-INSERT INTO champions (api_id, name) VALUES ($1, $2) ON CONFLICT DO NOTHING
-`
-
-type CreateChampionParams struct {
-	ApiID int32
-	Name  string
-}
-
-func (q *Queries) CreateChampion(ctx context.Context, arg CreateChampionParams) error {
-	_, err := q.db.Exec(ctx, createChampion, arg.ApiID, arg.Name)
-	return err
-}
-
 const getChampionsNotIn = `-- name: GetChampionsNotIn :many
 SELECT id, name, api_id, created_at FROM champions WHERE id NOT IN ($1)
 `
@@ -74,4 +60,20 @@ func (q *Queries) GetChampionsNotIn(ctx context.Context, id int32) ([]Champion, 
 		return nil, err
 	}
 	return items, nil
+}
+
+const upsertChampion = `-- name: UpsertChampion :exec
+INSERT INTO champions (api_id, name)
+VALUES ($1, $2)
+ON CONFLICT (api_id) DO UPDATE SET name = EXCLUDED.name
+`
+
+type UpsertChampionParams struct {
+	ApiID int32
+	Name  string
+}
+
+func (q *Queries) UpsertChampion(ctx context.Context, arg UpsertChampionParams) error {
+	_, err := q.db.Exec(ctx, upsertChampion, arg.ApiID, arg.Name)
+	return err
 }

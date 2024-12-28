@@ -1,5 +1,7 @@
--- name: CreateChampion :exec
-INSERT INTO champions (api_id, name) VALUES ($1, $2) ON CONFLICT DO NOTHING;
+-- name: UpsertChampion :exec
+INSERT INTO champions (api_id, name)
+VALUES ($1, $2)
+ON CONFLICT (api_id) DO UPDATE SET name = EXCLUDED.name;
 
 -- name: GetChampionsNotIn :many
 SELECT * FROM champions WHERE id NOT IN ($1);

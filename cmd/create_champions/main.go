@@ -60,7 +60,7 @@ func UpdateChampions(ctx context.Context, dbConn *db.Queries, version string) er
 			return err
 		}
 
-		err = dbConn.CreateChampion(ctx, db.CreateChampionParams{
+		err = dbConn.UpsertChampion(ctx, db.UpsertChampionParams{
 			Name:  champion.Name,
 			ApiID: int32(apiID),
 		})
@@ -76,7 +76,6 @@ func UpdateChampions(ctx context.Context, dbConn *db.Queries, version string) er
 func main() {
 	ctx := context.Background()
 
-	// Initialize database
 	dbConn, err := database.Initialize(ctx)
 	if err != nil {
 		log.Fatalf("Error initializing database: %v", err)
@@ -84,11 +83,13 @@ func main() {
 	defer dbConn.Close(ctx)
 
 	lastMatch, err := dbConn.Queries.LastMatch(ctx)
-	fmt.Println(lastMatch)
 	if err != nil {
 		log.Fatalf("Error getting last match: %v", err)
 	}
 	latestVersion := lastMatch.GameVersion
 
-	UpdateChampions(ctx, dbConn.Queries, latestVersion)
+	err = UpdateChampions(ctx, dbConn.Queries, latestVersion)
+	if err != nil {
+		log.Fatalf("Error updating champions: %v", err)
+	}
 }
