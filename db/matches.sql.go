@@ -115,6 +115,34 @@ func (q *Queries) GetMatch(ctx context.Context, id int32) (Match, error) {
 	return i, err
 }
 
+const lastMatch = `-- name: LastMatch :one
+SELECT id, match_id, game_start, game_version, winning_team, red_1_champion_id, red_2_champion_id, red_3_champion_id, red_4_champion_id, red_5_champion_id, blue_1_champion_id, blue_2_champion_id, blue_3_champion_id, blue_4_champion_id, blue_5_champion_id, created_at FROM matches ORDER BY created_at DESC LIMIT 1
+`
+
+func (q *Queries) LastMatch(ctx context.Context) (Match, error) {
+	row := q.db.QueryRow(ctx, lastMatch)
+	var i Match
+	err := row.Scan(
+		&i.ID,
+		&i.MatchID,
+		&i.GameStart,
+		&i.GameVersion,
+		&i.WinningTeam,
+		&i.Red1ChampionID,
+		&i.Red2ChampionID,
+		&i.Red3ChampionID,
+		&i.Red4ChampionID,
+		&i.Red5ChampionID,
+		&i.Blue1ChampionID,
+		&i.Blue2ChampionID,
+		&i.Blue3ChampionID,
+		&i.Blue4ChampionID,
+		&i.Blue5ChampionID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const lastMatches = `-- name: LastMatches :many
 SELECT matches.match_id FROM matches ORDER BY created_at DESC LIMIT 10
 `

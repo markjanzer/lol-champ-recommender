@@ -29,3 +29,10 @@ def get_first_match():
   SELECT * FROM matches ORDER BY created_at DESC LIMIT 1
   """
   return pd.read_sql(query, engine)
+
+def get_all_matches():
+  engine = get_db_connection()
+  query = """
+  SELECT * FROM matches
+  """
+  return pd.read_sql(query, engine)

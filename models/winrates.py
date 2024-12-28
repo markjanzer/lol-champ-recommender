@@ -1,4 +1,4 @@
-from utils.db_connector import get_champion_stats, get_first_match
+from utils.db_connector import get_champion_stats, get_all_matches
 import pandas as pd
 import json
 import itertools
@@ -55,10 +55,16 @@ def match_stats(match: pd.DataFrame, champion_stats: dict) -> Tuple[float, float
   red_team_synergies = []
 
   for combination in blue_team_combinations: 
-    blue_team_synergies.append(champion_stats[str(combination[0])]['synergies'][str(combination[1])])
+    try:
+      blue_team_synergies.append(champion_stats[str(combination[0])]['synergies'][str(combination[1])])
+    except KeyError:
+      print(f"KeyError for combination {combination}, match: {match}")
 
   for combination in red_team_combinations: 
-    red_team_synergies.append(champion_stats[str(combination[0])]['synergies'][str(combination[1])])
+    try:
+      red_team_synergies.append(champion_stats[str(combination[0])]['synergies'][str(combination[1])])
+    except KeyError:
+      print(f"KeyError for combination {combination}, match: {match}")
 
   blue_team_winrates = [get_winrate(synergy) for synergy in blue_team_synergies]
   red_team_winrates = [get_winrate(synergy) for synergy in red_team_synergies]
@@ -93,10 +99,13 @@ if __name__ == "__main__":
   print("In main")
   data = get_champion_stats()
   champion_stats = data.data[0]
+  matches = get_all_matches()
 
-  match = get_first_match()
-  print(average_prediction(match, champion_stats))
-  print(weighted_prediction(match, champion_stats))
+  for index, match in matches.iterrows():
+    match_df = pd.DataFrame([match])  # Convert single row to DataFrame
+    print(average_prediction(match_df, champion_stats))
+    print(weighted_prediction(match_df, champion_stats))
+    print(match['winning_team'])
+    print("---")
 
-  result = match.iloc[0]['winning_team'] == 'blue'
-  print(result)
+

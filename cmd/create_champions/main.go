@@ -10,9 +10,8 @@ import (
 	"lol-champ-recommender/internal/database"
 	"net/http"
 	"strconv"
+	"strings"
 )
-
-const championDataURL = "https://ddragon.leagueoflegends.com/cdn/14.20.1/data/en_US/champion.json"
 
 type ChampionData struct {
 	Data map[string]Champion `json:"data"`
@@ -23,6 +22,57 @@ type Champion struct {
 	Name string `json:"name"`
 }
 
+// Turn a version like 14.18.618.2357 into 14.18.1
+func simplifyVersion(version string) string {
+	versionNumbers := strings.Split(version, ".")
+	simplifiedVersion := fmt.Sprintf("%s.%s.1", versionNumbers[0], versionNumbers[1])
+	return simplifiedVersion
+}
+
+func championsURL(version string) string {
+	return fmt.Sprintf("https://ddragon.leagueoflegends.com/cdn/%s/data/en_US/champion.json", version)
+}
+
+func UpdateChampions(ctx context.Context, dbConn *db.Queries, version string) error {
+	simplifiedVersion := simplifyVersion(version)
+	championsURL := championsURL(simplifiedVersion)
+
+	resp, err := http.Get(championsURL)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	var championData ChampionData
+	err = json.Unmarshal(body, &championData)
+	if err != nil {
+		return err
+	}
+
+	for _, champion := range championData.Data {
+		apiID, err := strconv.Atoi(champion.Key)
+		if err != nil {
+			return err
+		}
+
+		err = dbConn.CreateChampion(ctx, db.CreateChampionParams{
+			Name:  champion.Name,
+			ApiID: int32(apiID),
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Search the matches for the latest version, update the champions from that version
 func main() {
 	ctx := context.Background()
 
@@ -33,44 +83,12 @@ func main() {
 	}
 	defer dbConn.Close(ctx)
 
-	// Fetch the data
-	resp, err := http.Get(championDataURL)
+	lastMatch, err := dbConn.Queries.LastMatch(ctx)
+	fmt.Println(lastMatch)
 	if err != nil {
-		fmt.Println("Error fetching data:", err)
-		return
+		log.Fatalf("Error getting last match: %v", err)
 	}
-	defer resp.Body.Close()
+	latestVersion := lastMatch.GameVersion
 
-	// Read the response body
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Println("Error reading response:", err)
-		return
-	}
-
-	// Parse the JSON
-	var championData ChampionData
-	err = json.Unmarshal(body, &championData)
-	if err != nil {
-		fmt.Println("Error parsing JSON:", err)
-		return
-	}
-
-	// Process and print the champion data
-	for _, champion := range championData.Data {
-		apiID, err := strconv.Atoi(champion.Key)
-		if err != nil {
-			fmt.Println("Error converting API ID:", err)
-			return
-		}
-
-		err = dbConn.Queries.CreateChampion(ctx, db.CreateChampionParams{
-			Name:  champion.Name,
-			ApiID: int32(apiID),
-		})
-		if err != nil {
-			fmt.Println("Error creating champion:", err)
-			return
-		}
-	}
+	UpdateChampions(ctx, dbConn.Queries, latestVersion)
 }
