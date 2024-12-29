@@ -10,66 +10,6 @@ import (
 	"os"
 )
 
-func createMatchData(ctx context.Context, queries *db.Queries, match db.Match) error {
-	blueWins := match.WinningTeam == "blue"
-	blueChampions := []int32{match.Blue1ChampionID, match.Blue2ChampionID, match.Blue3ChampionID, match.Blue4ChampionID, match.Blue5ChampionID}
-	redChampions := []int32{match.Red1ChampionID, match.Red2ChampionID, match.Red3ChampionID, match.Red4ChampionID, match.Red5ChampionID}
-
-	// Process all champions
-	for i, champion := range append(blueChampions, redChampions...) {
-		isBlue := i < 5
-		err := processChampion(ctx, queries, champion, blueChampions, redChampions, isBlue, blueWins)
-		if err != nil {
-			return fmt.Errorf("failed to process champion %d: %w", champion, err)
-		}
-	}
-
-	return nil
-}
-
-func processChampion(ctx context.Context, queries *db.Queries, championID int32, blueChampions, redChampions []int32, isBlue, blueWins bool) error {
-	wins := 0
-	if (isBlue && blueWins) || (!isBlue && !blueWins) {
-		wins = 1
-	}
-
-	// Process synergies
-	teammates := blueChampions
-	if !isBlue {
-		teammates = redChampions
-	}
-	for _, teammate := range teammates {
-		if teammate != championID {
-			err := queries.CreateOrUpdateSynergy(ctx, db.CreateOrUpdateSynergyParams{
-				Champion1ID: championID,
-				Champion2ID: teammate,
-				Wins:        int32(wins),
-			})
-			if err != nil {
-				return fmt.Errorf("failed to create or update synergy: %w", err)
-			}
-		}
-	}
-
-	// Process matchups
-	opponents := redChampions
-	if !isBlue {
-		opponents = blueChampions
-	}
-	for _, opponent := range opponents {
-		err := queries.CreateOrUpdateMatchup(ctx, db.CreateOrUpdateMatchupParams{
-			Champion1ID: championID,
-			Champion2ID: opponent,
-			Wins:        int32(wins),
-		})
-		if err != nil {
-			return fmt.Errorf("failed to create or update matchup: %w", err)
-		}
-	}
-
-	return nil
-}
-
 type WinStats struct {
 	Wins  int `json:"wins"`
 	Games int `json:"games"`

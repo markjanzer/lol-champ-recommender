@@ -31,26 +31,6 @@ CREATE TABLE IF NOT EXISTS player_search_log (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS matchups (
-  id SERIAL PRIMARY KEY,
-  champion1_id INTEGER NOT NULL,
-  champion2_id INTEGER NOT NULL,
-  wins INTEGER NOT NULL DEFAULT 0,
-  games_played INTEGER NOT NULL DEFAULT 0,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE (champion1_id, champion2_id)
-);
-
-CREATE TABLE IF NOT EXISTS synergies (
-  id SERIAL PRIMARY KEY,
-  champion1_id INTEGER NOT NULL,
-  champion2_id INTEGER NOT NULL,
-  wins INTEGER NOT NULL DEFAULT 0,
-  games_played INTEGER NOT NULL DEFAULT 0,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE (champion1_id, champion2_id)
-);
-
 CREATE TABLE IF NOT EXISTS champion_stats (
   id SERIAL PRIMARY KEY,
   data JSONB NOT NULL,
