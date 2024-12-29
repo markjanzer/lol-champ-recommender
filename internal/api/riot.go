@@ -18,7 +18,7 @@ const (
 
 type RiotClient struct {
 	apiKey     string
-	region     string
+	Region     string
 	client     *http.Client
 	limiter    *rate.Limiter
 	ctx        context.Context
@@ -32,7 +32,7 @@ func NewRiotClient(apiKey, region string, ctx context.Context) (*RiotClient, err
 	}
 	return &RiotClient{
 		apiKey: apiKey,
-		region: region,
+		Region: region,
 		ctx:    ctx,
 		client: &http.Client{
 			Timeout: time.Second * 10,
@@ -96,7 +96,7 @@ func (c *RiotClient) request(url string) ([]byte, error) {
 func (c *RiotClient) GetRecentMatches(puuid string, count int) ([]byte, error) {
 	match_type := "ranked"
 	url := fmt.Sprintf("%s/lol/match/v5/matches/by-puuid/%s/ids?count=%d&type=%s",
-		fmt.Sprintf(baseURL, c.region), puuid, count, match_type)
+		fmt.Sprintf(baseURL, c.Region), puuid, count, match_type)
 
 	body, err := c.request(url)
 	if err != nil {
@@ -108,7 +108,7 @@ func (c *RiotClient) GetRecentMatches(puuid string, count int) ([]byte, error) {
 
 func (c *RiotClient) GetMatchDetails(matchID string) ([]byte, error) {
 	url := fmt.Sprintf("%s/lol/match/v5/matches/%s",
-		fmt.Sprintf(baseURL, c.region), matchID)
+		fmt.Sprintf(baseURL, c.Region), matchID)
 
 	body, err := c.request(url)
 	if err != nil {

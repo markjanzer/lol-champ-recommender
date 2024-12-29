@@ -46,6 +46,11 @@ type MatchPuuids struct {
 	}
 }
 
+type SeedAccount struct {
+	PUUID  string `json:"puuid"`
+	Region string `json:"region"`
+}
+
 func (c *Crawler) RunCrawler(runCtx context.Context) error {
 	for {
 		select {
@@ -72,7 +77,7 @@ func (c *Crawler) RunCrawler(runCtx context.Context) error {
 func (c *Crawler) crawlPlayer(ctx context.Context, puuid string) error {
 	matchIDs, err := c.getRecentMatches(puuid)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error getting recent matches: %v\n", err)
+		return err
 	}
 
 	for _, matchID := range matchIDs {
@@ -158,7 +163,7 @@ func getWinningTeam(match *Match) string {
 func (c *Crawler) getRecentMatches(puuid string) ([]string, error) {
 	body, err := c.Client.GetRecentMatches(puuid, 20)
 	if err != nil {
-		return nil, fmt.Errorf("error getting recent matches: %w", err)
+		return nil, err
 	}
 
 	var matchIDs []string
@@ -182,7 +187,7 @@ func (c *Crawler) createMatch(matchID string) error {
 
 	matchData, err := c.Client.GetMatchDetails(matchID)
 	if err != nil {
-		return fmt.Errorf("error getting match details: %w", err)
+		return err
 	}
 
 	var match Match
@@ -199,15 +204,40 @@ func (c *Crawler) createMatch(matchID string) error {
 	return nil
 }
 
-var seedPlayerUUID = "b_b4LgRodsouwsgcYp-DhD5Fd0eY2VPd6A8zi1VSsFlnwitTSyWOzModIzDeFSt7_VgUEd4Pt7I0FA"
+func (c *Crawler) seedPlayerUUID() (string, error) {
+	fmt.Println("Searching for seed account in", c.Client.Region)
+	data, err := os.ReadFile("config/seed_accounts.json")
+	if err != nil {
+		return "", fmt.Errorf("error reading seed accounts: %v", err)
+	}
+
+	var seedAccounts []SeedAccount
+	if err := json.Unmarshal(data, &seedAccounts); err != nil {
+		return "", fmt.Errorf("error unmarshalling seed accounts: %v", err)
+	}
+
+	for _, seedAccount := range seedAccounts {
+		if seedAccount.Region == c.Client.Region {
+			fmt.Println("Found seed account", seedAccount.PUUID, seedAccount.Region)
+			return seedAccount.PUUID, nil
+		}
+	}
+
+	return "", fmt.Errorf("no seed account found for region: %v", c.Client.Region)
+}
 
 func (c *Crawler) findNextPlayer() (string, error) {
 	any_matches, err := c.Queries.AnyMatches(c.Ctx)
 	if err != nil {
-		return "", fmt.Errorf("error checking if there are any matches: %v", err)
+		return "", fmt.Errorf("find next player: %w", err)
 	}
 	if !any_matches {
-		return seedPlayerUUID, nil
+		fmt.Println("THERE ARE NO MATCHES")
+		puuid, err := c.seedPlayerUUID()
+		if err != nil {
+			return "", fmt.Errorf("error seeding player UUID: %v", err)
+		}
+		return puuid, nil
 	}
 
 	last_matches_ids, err := c.Queries.LastMatches(c.Ctx)
@@ -218,7 +248,7 @@ func (c *Crawler) findNextPlayer() (string, error) {
 	for _, match_id := range last_matches_ids {
 		matchData, err := c.Client.GetMatchDetails(match_id)
 		if err != nil {
-			return "", fmt.Errorf("error getting match details: %v", err)
+			return "", err
 		}
 
 		var matchPuuids MatchPuuids
