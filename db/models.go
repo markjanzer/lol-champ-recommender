@@ -27,6 +27,7 @@ type Match struct {
 	GameStart       pgtype.Timestamp
 	GameVersion     string
 	WinningTeam     string
+	QueueID         int32
 	Red1ChampionID  int32
 	Red2ChampionID  int32
 	Red3ChampionID  int32

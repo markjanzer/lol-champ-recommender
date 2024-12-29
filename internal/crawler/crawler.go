@@ -25,6 +25,7 @@ type Match struct {
 	Info struct {
 		GameStartTimestamp int64  `json:"gameStartTimestamp"`
 		GameVersion        string `json:"gameVersion"`
+		QueueID            int    `json:"queueId"`
 		Participants       []struct {
 			ChampionName string `json:"championName"`
 			ChampionID   int    `json:"championId"`
@@ -105,6 +106,7 @@ func saveMatch(queries *db.Queries, match *Match) error {
 		MatchID:         match.Metadata.MatchID,
 		GameStart:       gameStart,
 		GameVersion:     match.Info.GameVersion,
+		QueueID:         int32(match.Info.QueueID),
 		WinningTeam:     getWinningTeam(match),
 		Blue1ChampionID: getChampionId(match, 100, 1),
 		Blue2ChampionID: getChampionId(match, 100, 2),

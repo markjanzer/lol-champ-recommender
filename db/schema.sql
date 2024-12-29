@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS matches (
   game_start TIMESTAMP NOT NULL,
   game_version VARCHAR(255) NOT NULL,
   winning_team VARCHAR(255) NOT NULL,
+  queue_id INTEGER NOT NULL,
   red_1_champion_id INTEGER NOT NULL,
   red_2_champion_id INTEGER NOT NULL,
   red_3_champion_id INTEGER NOT NULL,

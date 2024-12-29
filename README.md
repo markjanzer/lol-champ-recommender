@@ -36,7 +36,7 @@ type CreateMatchParams struct {
 I'm not sure what types of matches are saved.
 
 
-**match_data**
+**create_champion_stats**
 This reads all of the existing matches and creates a new ChampionStats object.
 The jsonb of this object looks like this:
 ```
@@ -65,3 +65,6 @@ The jsonb of this object looks like this:
 This reads from the last champion stats object.
 It looks at all of the selected champions (with and against) and then (right now) it average the winrates for all synergies and matchups to determine the winrate for the given champion with this composition.
 Still not 100% sure how much data is returned here, do we offer matchup specific data? I think so but I'm not sure.
+
+**reset_db**
+This drops all of the tables and creates new ones (except for champions)
