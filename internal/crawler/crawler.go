@@ -152,7 +152,7 @@ func getWinningTeam(match *Match) string {
 			}
 		}
 	}
-	panic("No winning team found")
+	panic("No winning team found for match: " + match.Metadata.MatchID)
 }
 
 func (c *Crawler) getRecentMatches(puuid string) ([]string, error) {
