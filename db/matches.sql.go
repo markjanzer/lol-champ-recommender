@@ -139,6 +139,25 @@ func (q *Queries) GetMatch(ctx context.Context, id int32) (Match, error) {
 	return i, err
 }
 
+const getMatchAtPercentileID = `-- name: GetMatchAtPercentileID :one
+SELECT id
+FROM (
+  SELECT id, NTILE(100) OVER (ORDER BY id) AS tile
+  FROM matches
+) subq
+WHERE tile = $1::INTEGER
+ORDER BY id DESC
+LIMIT 1
+`
+
+// Need to cast integer due to https://github.com/sqlc-dev/sqlc/issues/3169
+func (q *Queries) GetMatchAtPercentileID(ctx context.Context, dollar_1 int32) (int32, error) {
+	row := q.db.QueryRow(ctx, getMatchAtPercentileID, dollar_1)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
+}
+
 const lastMatch = `-- name: LastMatch :one
 SELECT id, match_id, game_start, game_version, winning_team, queue_id, server_id, red_1_champion_id, red_2_champion_id, red_3_champion_id, red_4_champion_id, red_5_champion_id, blue_1_champion_id, blue_2_champion_id, blue_3_champion_id, blue_4_champion_id, blue_5_champion_id, created_at FROM matches ORDER BY created_at DESC LIMIT 1
 `
@@ -202,4 +221,28 @@ func (q *Queries) MatchExists(ctx context.Context, matchID string) (bool, error)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
+}
+
+const matchIDsUpToID = `-- name: MatchIDsUpToID :many
+SELECT matches.id FROM matches WHERE id <= $1
+`
+
+func (q *Queries) MatchIDsUpToID(ctx context.Context, id int32) ([]int32, error) {
+	rows, err := q.db.Query(ctx, matchIDsUpToID, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int32
+	for rows.Next() {
+		var id int32
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

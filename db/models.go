@@ -16,9 +16,10 @@ type Champion struct {
 }
 
 type ChampionStat struct {
-	ID        int32
-	Data      []byte
-	CreatedAt pgtype.Timestamp
+	ID          int32
+	Data        []byte
+	LastMatchID int32
+	CreatedAt   pgtype.Timestamp
 }
 
 type Match struct {

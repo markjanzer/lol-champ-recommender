@@ -1,5 +1,8 @@
 -- name: CreateChampionStats :exec
-INSERT INTO champion_stats (data) VALUES ($1);
+INSERT INTO champion_stats (
+  data,
+  last_match_id
+) VALUES ($1, $2);
 
 -- name: GetLastChampionStats :one
 SELECT * FROM champion_stats ORDER BY created_at DESC LIMIT 1;

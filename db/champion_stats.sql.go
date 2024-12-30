@@ -39,21 +39,34 @@ func (q *Queries) AllChampions(ctx context.Context) ([]Champion, error) {
 }
 
 const createChampionStats = `-- name: CreateChampionStats :exec
-INSERT INTO champion_stats (data) VALUES ($1)
+INSERT INTO champion_stats (
+  data,
+  last_match_id
+) VALUES ($1, $2)
 `
 
-func (q *Queries) CreateChampionStats(ctx context.Context, data []byte) error {
-	_, err := q.db.Exec(ctx, createChampionStats, data)
+type CreateChampionStatsParams struct {
+	Data        []byte
+	LastMatchID int32
+}
+
+func (q *Queries) CreateChampionStats(ctx context.Context, arg CreateChampionStatsParams) error {
+	_, err := q.db.Exec(ctx, createChampionStats, arg.Data, arg.LastMatchID)
 	return err
 }
 
 const getLastChampionStats = `-- name: GetLastChampionStats :one
-SELECT id, data, created_at FROM champion_stats ORDER BY created_at DESC LIMIT 1
+SELECT id, data, last_match_id, created_at FROM champion_stats ORDER BY created_at DESC LIMIT 1
 `
 
 func (q *Queries) GetLastChampionStats(ctx context.Context) (ChampionStat, error) {
 	row := q.db.QueryRow(ctx, getLastChampionStats)
 	var i ChampionStat
-	err := row.Scan(&i.ID, &i.Data, &i.CreatedAt)
+	err := row.Scan(
+		&i.ID,
+		&i.Data,
+		&i.LastMatchID,
+		&i.CreatedAt,
+	)
 	return i, err
 }

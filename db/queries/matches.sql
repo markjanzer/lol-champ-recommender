@@ -36,3 +36,17 @@ SELECT EXISTS(SELECT 1 FROM matches WHERE match_id = $1);
 
 -- name: GetMatch :one
 SELECT * FROM matches WHERE id = $1;
+
+-- Need to cast integer due to https://github.com/sqlc-dev/sqlc/issues/3169
+-- name: GetMatchAtPercentileID :one
+SELECT id
+FROM (
+  SELECT id, NTILE(100) OVER (ORDER BY id) AS tile
+  FROM matches
+) subq
+WHERE tile = $1::INTEGER
+ORDER BY id DESC
+LIMIT 1;
+
+-- name: MatchIDsUpToID :many
+SELECT matches.id FROM matches WHERE id <= $1;

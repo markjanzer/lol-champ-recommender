@@ -25,14 +25,13 @@ def get_teams(match):
   return blue_team, red_team
 
 class WinStats(TypedDict):
-    wins: int
-    games: int
+  wins: int
+  games: int
 
 def get_winrate(stats: WinStats) -> float:
   if stats['games'] == 0:
     return 0.5
   return stats['wins'] / stats['games']
-
 
 def get_all_combinations(numbers):
   return list(itertools.combinations(numbers, 2))
@@ -58,14 +57,16 @@ def match_stats(match: pd.DataFrame, champion_stats: dict) -> Tuple[float, float
     try:
       blue_team_synergies.append(champion_stats[str(combination[0])]['synergies'][str(combination[1])])
     except KeyError:
-      print(f"KeyError for combination {combination}, match: {match}")
+      print(f"KeyError for blue team synergies {combination}, match: {match}")
+      raise KeyError
+
 
   for combination in red_team_combinations: 
     try:
       red_team_synergies.append(champion_stats[str(combination[0])]['synergies'][str(combination[1])])
     except KeyError:
-      print(f"KeyError for combination {combination}, match: {match}")
-
+      print(f"KeyError for red team synergies {combination}, match: {match}")
+      raise KeyError
   blue_team_winrates = [get_winrate(synergy) for synergy in blue_team_synergies]
   red_team_winrates = [get_winrate(synergy) for synergy in red_team_synergies]
 
@@ -80,7 +81,11 @@ def match_stats(match: pd.DataFrame, champion_stats: dict) -> Tuple[float, float
   
   matchups_from_blue_team = []
   for matchup in opposing_pairings:
-    matchups_from_blue_team.append(champion_stats[str(matchup[0])]['matchups'][str(matchup[1])])
+    try:
+      matchups_from_blue_team.append(champion_stats[str(matchup[0])]['matchups'][str(matchup[1])])
+    except KeyError:
+      print(f"KeyError for matchup {matchup}, match: {match}")
+      raise KeyError
 
   blue_team_winrates = [get_winrate(matchup) for matchup in matchups_from_blue_team]
   blue_team_matchup = sum(blue_team_winrates) / len(blue_team_winrates)
@@ -95,17 +100,28 @@ def weighted_prediction(match: pd.DataFrame, matchup_stats: dict) -> float:
   blue_team_synergy, red_team_synergy, blue_team_matchup = match_stats(match, matchup_stats)
   return predict_win_with_weighted_average(blue_team_synergy, red_team_synergy, blue_team_matchup)
 
+def calculate_accuracy(true_outcomes: list[int], predicted_probabilities: list[int]) -> float:
+  predictions = [1 if probability >= 0.5 else 0 for probability in predicted_probabilities]
+  correct = sum(1 for true, pred in zip(true_outcomes, predictions) if true == pred)
+  return correct / len(true_outcomes)
+
 if __name__ == "__main__":
-  print("In main")
   data = get_champion_stats()
   champion_stats = data.data[0]
   matches = get_all_matches()
+  outcomes = [1 if match["winning_team"] == "blue" else 0 for _, match in matches.iterrows()]
 
-  for index, match in matches.iterrows():
-    match_df = pd.DataFrame([match])  # Convert single row to DataFrame
-    print(average_prediction(match_df, champion_stats))
-    print(weighted_prediction(match_df, champion_stats))
-    print(match['winning_team'])
-    print("---")
+  average_predictions = [average_prediction(pd.DataFrame([match]), champion_stats) for _, match in matches.iterrows()]
+  weighted_predictions = [weighted_prediction(pd.DataFrame([match]), champion_stats) for _, match in matches.iterrows()]
+
+  print("Average Accuracy: ", calculate_accuracy(outcomes, average_predictions))
+  print("Weighted Accuracy: ", calculate_accuracy(outcomes, weighted_predictions))
+
+  # for index, match in matches.iterrows():
+  #   match_df = pd.DataFrame([match])  # Convert single row to DataFrame
+  #   print(average_prediction(match_df, champion_stats))
+  #   print(weighted_prediction(match_df, champion_stats))
+  #   print(match['winning_team'])
+  #   print("---")
 
 

@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS player_search_log (
 CREATE TABLE IF NOT EXISTS champion_stats (
   id SERIAL PRIMARY KEY,
   data JSONB NOT NULL,
+  last_match_id INTEGER NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

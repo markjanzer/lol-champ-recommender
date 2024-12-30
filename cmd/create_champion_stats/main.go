@@ -163,14 +163,22 @@ func main() {
 	}
 	fmt.Println(championStats)
 
-	all_match_ids, err := dbConn.Queries.AllMatchIds(ctx)
+	// Limit the amount of matches we process to separate training and test matches
+	// var percentile int32 = 70
+	// lastMatchID, err := dbConn.Queries.GetMatchAtPercentileID(ctx, percentile)
+	// if err != nil {
+	// 	fmt.Fprintf(os.Stderr, "Error getting match at percentile %d: %v\n", percentile, err)
+	// 	os.Exit(1)
+	// }
+
+	match_ids, err := dbConn.Queries.AllMatchIds(ctx)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error getting all match ids: %v\n", err)
 		os.Exit(1)
 	}
 
-	for index, id := range all_match_ids {
-		fmt.Println("Processing match", index+1, "of", len(all_match_ids))
+	for index, id := range match_ids {
+		fmt.Println("Processing match", index+1, "of", len(match_ids))
 		match, err := dbConn.Queries.GetMatch(ctx, id)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error getting match with id %d: %v\n", id, err)
@@ -191,8 +199,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Println(championStats)
-	err = dbConn.Queries.CreateChampionStats(ctx, json)
+	err = dbConn.Queries.CreateChampionStats(ctx, db.CreateChampionStatsParams{
+		Data:        json,
+		LastMatchID: 0,
+	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating champion stats: %v\n", err)
 		os.Exit(1)
