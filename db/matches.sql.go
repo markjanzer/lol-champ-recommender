@@ -35,17 +35,6 @@ func (q *Queries) AllMatchIds(ctx context.Context) ([]int32, error) {
 	return items, nil
 }
 
-const anyMatches = `-- name: AnyMatches :one
-SELECT EXISTS(SELECT 1 FROM matches)
-`
-
-func (q *Queries) AnyMatches(ctx context.Context) (bool, error) {
-	row := q.db.QueryRow(ctx, anyMatches)
-	var exists bool
-	err := row.Scan(&exists)
-	return exists, err
-}
-
 const anyMatchesFromServer = `-- name: AnyMatchesFromServer :one
 SELECT EXISTS(SELECT 1 FROM matches WHERE server_id = $1)
 `
@@ -178,30 +167,6 @@ func (q *Queries) LastMatch(ctx context.Context) (Match, error) {
 		&i.CreatedAt,
 	)
 	return i, err
-}
-
-const lastMatches = `-- name: LastMatches :many
-SELECT matches.match_id FROM matches ORDER BY created_at DESC LIMIT 10
-`
-
-func (q *Queries) LastMatches(ctx context.Context) ([]string, error) {
-	rows, err := q.db.Query(ctx, lastMatches)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []string
-	for rows.Next() {
-		var match_id string
-		if err := rows.Scan(&match_id); err != nil {
-			return nil, err
-		}
-		items = append(items, match_id)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const lastMatchesFromServer = `-- name: LastMatchesFromServer :many

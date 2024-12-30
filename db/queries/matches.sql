@@ -22,9 +22,6 @@ INSERT INTO matches (
 -- name: AllMatchIds :many
 SELECT matches.id FROM matches;
 
--- name: LastMatches :many
-SELECT matches.match_id FROM matches ORDER BY created_at DESC LIMIT 10;
-
 -- name: LastMatchesFromServer :many
 SELECT matches.match_id FROM matches WHERE server_id = $1 ORDER BY created_at DESC LIMIT 10;
 
@@ -33,9 +30,6 @@ SELECT * FROM matches ORDER BY created_at DESC LIMIT 1;
 
 -- name: AnyMatchesFromServer :one
 SELECT EXISTS(SELECT 1 FROM matches WHERE server_id = $1);
-
--- name: AnyMatches :one
-SELECT EXISTS(SELECT 1 FROM matches);
 
 -- name: MatchExists :one
 SELECT EXISTS(SELECT 1 FROM matches WHERE match_id = $1);
