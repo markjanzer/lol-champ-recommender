@@ -21,18 +21,15 @@ func main() {
 		log.Fatal("RIOT_API_KEY environment variable is not set")
 	}
 
-	region := "americas"
+	region := "sea"
 	ctx := context.Background()
-
-	// Remove or comment out this debug line in production
-	fmt.Printf("API Key length: %d\n", len(apiKey))
 
 	client, err := api.NewRiotClient(apiKey, region, ctx)
 	if err != nil {
 		log.Fatalf("Failed to initialize Riot API client: %v", err)
 	}
 
-	body, err := client.GetMatchDetails("NA1_5115775401")
+	body, err := client.GetMatchDetails("VN2_696785697")
 	if err != nil {
 		log.Fatalf("Failed to get match details: %v", err)
 	}

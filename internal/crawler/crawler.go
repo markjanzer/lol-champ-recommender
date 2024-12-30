@@ -23,6 +23,7 @@ type Match struct {
 		MatchID string `json:"matchId"`
 	} `json:"metadata"`
 	Info struct {
+		EndOfGameResult    string `json:"endOfGameResult"`
 		GameStartTimestamp int64  `json:"gameStartTimestamp"`
 		GameVersion        string `json:"gameVersion"`
 		QueueID            int    `json:"queueId"`
@@ -108,13 +109,17 @@ func saveMatch(queries *db.Queries, match *Match) error {
 	if err != nil {
 		return fmt.Errorf("error scanning game start time: %w", err)
 	}
+	winningTeam, err := getWinningTeam(match)
+	if err != nil {
+		return err
+	}
 	createMatchParams := db.CreateMatchParams{
 		MatchID:         match.Metadata.MatchID,
 		GameStart:       gameStart,
 		GameVersion:     match.Info.GameVersion,
 		QueueID:         int32(match.Info.QueueID),
 		ServerID:        match.Info.PlatformID,
-		WinningTeam:     getWinningTeam(match),
+		WinningTeam:     winningTeam,
 		Blue1ChampionID: getChampionId(match, 100, 1),
 		Blue2ChampionID: getChampionId(match, 100, 2),
 		Blue3ChampionID: getChampionId(match, 100, 3),
@@ -149,17 +154,17 @@ func getChampionId(match *Match, teamID int, position int) int32 {
 	return 0
 }
 
-func getWinningTeam(match *Match) string {
+func getWinningTeam(match *Match) (string, error) {
 	for _, team := range match.Info.Teams {
 		if team.Win {
 			if team.TeamID == 100 {
-				return "blue"
-			} else {
-				return "red"
+				return "blue", nil
+			} else if team.TeamID == 200 {
+				return "red", nil
 			}
 		}
 	}
-	panic("No winning team found for match: " + match.Metadata.MatchID)
+	return "", fmt.Errorf("no winning team found for match: %s, end of game result: %s", match.Metadata.MatchID, match.Info.EndOfGameResult)
 }
 
 func (c *Crawler) getRecentMatches(puuid string) ([]string, error) {
