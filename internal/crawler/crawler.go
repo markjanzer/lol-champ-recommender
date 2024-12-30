@@ -220,7 +220,6 @@ func (c *Crawler) seedAccount() (SeedAccount, error) {
 
 	for _, seedAccount := range seedAccounts {
 		if seedAccount.Region == c.Client.Region {
-			fmt.Println("Found seed account", seedAccount.PUUID, seedAccount.Region)
 			return seedAccount, nil
 		}
 	}
@@ -246,7 +245,7 @@ func (c *Crawler) findNextPlayer() (string, error) {
 		return seedAccount.PUUID, nil
 	}
 
-	last_matches_ids, err := c.Queries.LastMatches(c.Ctx)
+	last_matches_ids, err := c.Queries.LastMatchesFromServer(c.Ctx, seedAccount.Server)
 	if err != nil {
 		return "", fmt.Errorf("error getting last matches: %v", err)
 	}

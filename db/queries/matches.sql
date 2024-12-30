@@ -25,6 +25,9 @@ SELECT matches.id FROM matches;
 -- name: LastMatches :many
 SELECT matches.match_id FROM matches ORDER BY created_at DESC LIMIT 10;
 
+-- name: LastMatchesFromServer :many
+SELECT matches.match_id FROM matches WHERE server_id = $1 ORDER BY created_at DESC LIMIT 10;
+
 -- name: LastMatch :one
 SELECT * FROM matches ORDER BY created_at DESC LIMIT 1;
 

@@ -204,6 +204,30 @@ func (q *Queries) LastMatches(ctx context.Context) ([]string, error) {
 	return items, nil
 }
 
+const lastMatchesFromServer = `-- name: LastMatchesFromServer :many
+SELECT matches.match_id FROM matches WHERE server_id = $1 ORDER BY created_at DESC LIMIT 10
+`
+
+func (q *Queries) LastMatchesFromServer(ctx context.Context, serverID string) ([]string, error) {
+	rows, err := q.db.Query(ctx, lastMatchesFromServer, serverID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var match_id string
+		if err := rows.Scan(&match_id); err != nil {
+			return nil, err
+		}
+		items = append(items, match_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const matchExists = `-- name: MatchExists :one
 SELECT EXISTS(SELECT 1 FROM matches WHERE match_id = $1)
 `
