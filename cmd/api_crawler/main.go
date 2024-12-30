@@ -26,7 +26,7 @@ func main() {
 
 	// Initialize API client
 	apiKey := os.Getenv("RIOT_API_KEY")
-	region := "sea"
+	region := "europe"
 
 	client, err := api.NewRiotClient(apiKey, region, ctx)
 	if err != nil {

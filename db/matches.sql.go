@@ -46,6 +46,17 @@ func (q *Queries) AnyMatches(ctx context.Context) (bool, error) {
 	return exists, err
 }
 
+const anyMatchesFromServer = `-- name: AnyMatchesFromServer :one
+SELECT EXISTS(SELECT 1 FROM matches WHERE server_id = $1)
+`
+
+func (q *Queries) AnyMatchesFromServer(ctx context.Context, serverID string) (bool, error) {
+	row := q.db.QueryRow(ctx, anyMatchesFromServer, serverID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const createMatch = `-- name: CreateMatch :exec
 INSERT INTO matches (
     match_id, 

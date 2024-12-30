@@ -40,3 +40,4 @@ CREATE TABLE IF NOT EXISTS champion_stats (
 );
 
 CREATE INDEX IF NOT EXISTS idx_match_id ON matches(match_id);
+CREATE INDEX IF NOT EXISTS idx_match_server_id ON matches(server_id);

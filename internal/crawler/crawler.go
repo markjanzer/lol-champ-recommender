@@ -50,6 +50,7 @@ type MatchPuuids struct {
 type SeedAccount struct {
 	PUUID  string `json:"puuid"`
 	Region string `json:"region"`
+	Server string `json:"server"`
 }
 
 func (c *Crawler) RunCrawler(runCtx context.Context) error {
@@ -206,39 +207,43 @@ func (c *Crawler) createMatch(matchID string) error {
 	return nil
 }
 
-func (c *Crawler) seedPlayerUUID() (string, error) {
-	fmt.Println("Searching for seed account in", c.Client.Region)
+func (c *Crawler) seedAccount() (SeedAccount, error) {
 	data, err := os.ReadFile("config/seed_accounts.json")
 	if err != nil {
-		return "", fmt.Errorf("error reading seed accounts: %v", err)
+		return SeedAccount{}, fmt.Errorf("error reading seed accounts: %v", err)
 	}
 
 	var seedAccounts []SeedAccount
 	if err := json.Unmarshal(data, &seedAccounts); err != nil {
-		return "", fmt.Errorf("error unmarshalling seed accounts: %v", err)
+		return SeedAccount{}, fmt.Errorf("error unmarshalling seed accounts: %v", err)
 	}
 
 	for _, seedAccount := range seedAccounts {
 		if seedAccount.Region == c.Client.Region {
 			fmt.Println("Found seed account", seedAccount.PUUID, seedAccount.Region)
-			return seedAccount.PUUID, nil
+			return seedAccount, nil
 		}
 	}
 
-	return "", fmt.Errorf("no seed account found for region: %v", c.Client.Region)
+	return SeedAccount{}, fmt.Errorf("no seed account found for region: %v", c.Client.Region)
 }
 
+// This is a little confusing, because we are passing regions, but currently each region has one server
+// and the server is what is stored in the matches table. So for a given region we will find the relevant
+// server via the seed accounts, and then see if there are any matches from that server.
 func (c *Crawler) findNextPlayer() (string, error) {
-	any_matches, err := c.Queries.AnyMatches(c.Ctx)
+	seedAccount, err := c.seedAccount()
+	if err != nil {
+		return "", fmt.Errorf("error seeding account: %v", err)
+	}
+
+	any_matches, err := c.Queries.AnyMatchesFromServer(c.Ctx, seedAccount.Server)
 	if err != nil {
 		return "", fmt.Errorf("find next player: %w", err)
 	}
 	if !any_matches {
-		puuid, err := c.seedPlayerUUID()
-		if err != nil {
-			return "", fmt.Errorf("error seeding player UUID: %v", err)
-		}
-		return puuid, nil
+		fmt.Println("No matches found for server", seedAccount.Server)
+		return seedAccount.PUUID, nil
 	}
 
 	last_matches_ids, err := c.Queries.LastMatches(c.Ctx)
