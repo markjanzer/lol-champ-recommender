@@ -49,7 +49,6 @@ type MatchPuuids struct {
 
 type SeedAccount struct {
 	PUUID  string `json:"puuid"`
-	Region string `json:"region"`
 	Server string `json:"server"`
 }
 
@@ -213,18 +212,16 @@ func (c *Crawler) seedAccount() (SeedAccount, error) {
 		return SeedAccount{}, fmt.Errorf("error reading seed accounts: %v", err)
 	}
 
-	var seedAccounts []SeedAccount
+	var seedAccounts map[string]SeedAccount
 	if err := json.Unmarshal(data, &seedAccounts); err != nil {
 		return SeedAccount{}, fmt.Errorf("error unmarshalling seed accounts: %v", err)
 	}
 
-	for _, seedAccount := range seedAccounts {
-		if seedAccount.Region == c.Client.Region {
-			return seedAccount, nil
-		}
+	if _, ok := seedAccounts[c.Client.Region]; !ok {
+		return SeedAccount{}, fmt.Errorf("no seed account found for region: %v", c.Client.Region)
 	}
 
-	return SeedAccount{}, fmt.Errorf("no seed account found for region: %v", c.Client.Region)
+	return seedAccounts[c.Client.Region], nil
 }
 
 // This is a little confusing, because we are passing regions, but currently each region has one server
@@ -235,17 +232,18 @@ func (c *Crawler) findNextPlayer() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("error seeding account: %v", err)
 	}
+	server := seedAccount.Server
 
-	any_matches, err := c.Queries.AnyMatchesFromServer(c.Ctx, seedAccount.Server)
+	any_matches, err := c.Queries.AnyMatchesFromServer(c.Ctx, server)
 	if err != nil {
 		return "", fmt.Errorf("find next player: %w", err)
 	}
 	if !any_matches {
-		fmt.Println("No matches found for server", seedAccount.Server)
+		fmt.Println("No matches found for server", server)
 		return seedAccount.PUUID, nil
 	}
 
-	last_matches_ids, err := c.Queries.LastMatchesFromServer(c.Ctx, seedAccount.Server)
+	last_matches_ids, err := c.Queries.LastMatchesFromServer(c.Ctx, server)
 	if err != nil {
 		return "", fmt.Errorf("error getting last matches: %v", err)
 	}
