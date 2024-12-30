@@ -24,20 +24,20 @@ type ChampionData struct {
 type ChampionDataMap map[int32]ChampionData
 
 func initChampionStats(ctx context.Context, queries *db.Queries) (ChampionDataMap, error) {
-	allChampionIds, err := queries.AllChampionIds(ctx)
+	riotIds, err := queries.AllChampionRiotIds(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all champion ids: %w", err)
 	}
 
 	championStats := make(ChampionDataMap)
-	for _, id := range allChampionIds {
+	for _, id := range riotIds {
 		championStats[id] = ChampionData{
 			Matchups:  make(map[int32]WinStats),
 			Synergies: make(map[int32]WinStats),
 		}
-		for _, id2 := range allChampionIds {
-			championStats[id].Matchups[id2] = WinStats{}
-			championStats[id].Synergies[id2] = WinStats{}
+		for _, id2 := range riotIds {
+			championStats[id].Matchups[id2] = WinStats{0, 0}
+			championStats[id].Synergies[id2] = WinStats{0, 0}
 		}
 	}
 
@@ -62,13 +62,9 @@ func addMatchToChampionStats(championStats ChampionDataMap, match db.Match) erro
 }
 
 func addChampionToStats(championStats ChampionDataMap, championID int32, blueChampions, redChampions []int32, isBlue, blueWins bool) error {
-	// Ensure the champion exists in the map
 	if _, exists := championStats[championID]; !exists {
-		championStats[championID] = ChampionData{
-			Winrate:   WinStats{},
-			Matchups:  make(map[int32]WinStats),
-			Synergies: make(map[int32]WinStats),
-		}
+		fmt.Print("Might need to run create_champions first")
+		panic(fmt.Sprintf("champion %d not found in championStats", championID))
 	}
 
 	// Process synergies
@@ -156,6 +152,8 @@ func main() {
 	}
 	defer dbConn.Close(ctx)
 
+	// TODO: Update champions here!
+
 	championStats, err := initChampionStats(ctx, dbConn.Queries)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error initializing champion stats: %v\n", err)
@@ -164,14 +162,14 @@ func main() {
 	fmt.Println(championStats)
 
 	// Limit the amount of matches we process to separate training and test matches
-	// var percentile int32 = 70
-	// lastMatchID, err := dbConn.Queries.GetMatchAtPercentileID(ctx, percentile)
-	// if err != nil {
-	// 	fmt.Fprintf(os.Stderr, "Error getting match at percentile %d: %v\n", percentile, err)
-	// 	os.Exit(1)
-	// }
+	var percentile int32 = 70
+	lastMatchID, err := dbConn.Queries.GetMatchAtPercentileID(ctx, percentile)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error getting match at percentile %d: %v\n", percentile, err)
+		os.Exit(1)
+	}
 
-	match_ids, err := dbConn.Queries.AllMatchIds(ctx)
+	match_ids, err := dbConn.Queries.MatchIDsUpToID(ctx, lastMatchID)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error getting all match ids: %v\n", err)
 		os.Exit(1)
@@ -182,7 +180,6 @@ func main() {
 		match, err := dbConn.Queries.GetMatch(ctx, id)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error getting match with id %d: %v\n", id, err)
-			// Don't think I want to exit here
 			os.Exit(1)
 		}
 
@@ -201,7 +198,7 @@ func main() {
 
 	err = dbConn.Queries.CreateChampionStats(ctx, db.CreateChampionStatsParams{
 		Data:        json,
-		LastMatchID: 0,
+		LastMatchID: lastMatchID,
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating champion stats: %v\n", err)

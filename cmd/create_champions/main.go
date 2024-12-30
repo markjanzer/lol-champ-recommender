@@ -33,7 +33,7 @@ func championsURL(version string) string {
 	return fmt.Sprintf("https://ddragon.leagueoflegends.com/cdn/%s/data/en_US/champion.json", version)
 }
 
-func UpdateChampions(ctx context.Context, dbConn *db.Queries, version string) error {
+func UpdateChampionsFromVersion(ctx context.Context, queries *db.Queries, version string) error {
 	simplifiedVersion := simplifyVersion(version)
 	championsURL := championsURL(simplifiedVersion)
 
@@ -60,7 +60,7 @@ func UpdateChampions(ctx context.Context, dbConn *db.Queries, version string) er
 			return err
 		}
 
-		err = dbConn.UpsertChampion(ctx, db.UpsertChampionParams{
+		err = queries.UpsertChampion(ctx, db.UpsertChampionParams{
 			Name:  champion.Name,
 			ApiID: int32(apiID),
 		})
@@ -70,6 +70,15 @@ func UpdateChampions(ctx context.Context, dbConn *db.Queries, version string) er
 	}
 
 	return nil
+}
+
+func UpdateChampions(ctx context.Context, queries *db.Queries) error {
+	lastMatch, err := queries.LastMatch(ctx)
+	if err != nil {
+		return err
+	}
+
+	return UpdateChampionsFromVersion(ctx, queries, lastMatch.GameVersion)
 }
 
 // Search the matches for the latest version, update the champions from that version
@@ -82,13 +91,7 @@ func main() {
 	}
 	defer dbConn.Close(ctx)
 
-	lastMatch, err := dbConn.Queries.LastMatch(ctx)
-	if err != nil {
-		log.Fatalf("Error getting last match: %v", err)
-	}
-	latestVersion := lastMatch.GameVersion
-
-	err = UpdateChampions(ctx, dbConn.Queries, latestVersion)
+	err = UpdateChampions(ctx, dbConn.Queries)
 	if err != nil {
 		log.Fatalf("Error updating champions: %v", err)
 	}

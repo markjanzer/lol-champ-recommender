@@ -44,6 +44,7 @@ func sortResults(results []ChampionPerformance) {
 }
 
 func RecommendChampions(ctx context.Context, queries *db.Queries, championStats ChampionDataMap, champSelect ChampSelect) ([]ChampionPerformance, error) {
+	// This might need to be updated to use riot IDs
 	allChampIds, err := queries.AllChampionIds(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error getting all champion IDs: %v", err)
