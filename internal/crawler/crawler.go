@@ -26,6 +26,7 @@ type Match struct {
 		GameStartTimestamp int64  `json:"gameStartTimestamp"`
 		GameVersion        string `json:"gameVersion"`
 		QueueID            int    `json:"queueId"`
+		PlatformID         string `json:"platformId"`
 		Participants       []struct {
 			ChampionName string `json:"championName"`
 			ChampionID   int    `json:"championId"`
@@ -112,6 +113,7 @@ func saveMatch(queries *db.Queries, match *Match) error {
 		GameStart:       gameStart,
 		GameVersion:     match.Info.GameVersion,
 		QueueID:         int32(match.Info.QueueID),
+		ServerID:        match.Info.PlatformID,
 		WinningTeam:     getWinningTeam(match),
 		Blue1ChampionID: getChampionId(match, 100, 1),
 		Blue2ChampionID: getChampionId(match, 100, 2),
@@ -232,7 +234,6 @@ func (c *Crawler) findNextPlayer() (string, error) {
 		return "", fmt.Errorf("find next player: %w", err)
 	}
 	if !any_matches {
-		fmt.Println("THERE ARE NO MATCHES")
 		puuid, err := c.seedPlayerUUID()
 		if err != nil {
 			return "", fmt.Errorf("error seeding player UUID: %v", err)

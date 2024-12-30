@@ -52,7 +52,8 @@ INSERT INTO matches (
     game_start, 
     game_version, 
     winning_team, 
-    queue_id, 
+    queue_id,
+    server_id,
     blue_1_champion_id, 
     blue_2_champion_id, 
     blue_3_champion_id, 
@@ -64,7 +65,7 @@ INSERT INTO matches (
     red_4_champion_id, 
     red_5_champion_id
   ) 
-  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id
 `
 
 type CreateMatchParams struct {
@@ -73,6 +74,7 @@ type CreateMatchParams struct {
 	GameVersion     string
 	WinningTeam     string
 	QueueID         int32
+	ServerID        string
 	Blue1ChampionID int32
 	Blue2ChampionID int32
 	Blue3ChampionID int32
@@ -92,6 +94,7 @@ func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) error 
 		arg.GameVersion,
 		arg.WinningTeam,
 		arg.QueueID,
+		arg.ServerID,
 		arg.Blue1ChampionID,
 		arg.Blue2ChampionID,
 		arg.Blue3ChampionID,
@@ -107,7 +110,7 @@ func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) error 
 }
 
 const getMatch = `-- name: GetMatch :one
-SELECT id, match_id, game_start, game_version, winning_team, queue_id, red_1_champion_id, red_2_champion_id, red_3_champion_id, red_4_champion_id, red_5_champion_id, blue_1_champion_id, blue_2_champion_id, blue_3_champion_id, blue_4_champion_id, blue_5_champion_id, created_at FROM matches WHERE id = $1
+SELECT id, match_id, game_start, game_version, winning_team, queue_id, server_id, red_1_champion_id, red_2_champion_id, red_3_champion_id, red_4_champion_id, red_5_champion_id, blue_1_champion_id, blue_2_champion_id, blue_3_champion_id, blue_4_champion_id, blue_5_champion_id, created_at FROM matches WHERE id = $1
 `
 
 func (q *Queries) GetMatch(ctx context.Context, id int32) (Match, error) {
@@ -120,6 +123,7 @@ func (q *Queries) GetMatch(ctx context.Context, id int32) (Match, error) {
 		&i.GameVersion,
 		&i.WinningTeam,
 		&i.QueueID,
+		&i.ServerID,
 		&i.Red1ChampionID,
 		&i.Red2ChampionID,
 		&i.Red3ChampionID,
@@ -136,7 +140,7 @@ func (q *Queries) GetMatch(ctx context.Context, id int32) (Match, error) {
 }
 
 const lastMatch = `-- name: LastMatch :one
-SELECT id, match_id, game_start, game_version, winning_team, queue_id, red_1_champion_id, red_2_champion_id, red_3_champion_id, red_4_champion_id, red_5_champion_id, blue_1_champion_id, blue_2_champion_id, blue_3_champion_id, blue_4_champion_id, blue_5_champion_id, created_at FROM matches ORDER BY created_at DESC LIMIT 1
+SELECT id, match_id, game_start, game_version, winning_team, queue_id, server_id, red_1_champion_id, red_2_champion_id, red_3_champion_id, red_4_champion_id, red_5_champion_id, blue_1_champion_id, blue_2_champion_id, blue_3_champion_id, blue_4_champion_id, blue_5_champion_id, created_at FROM matches ORDER BY created_at DESC LIMIT 1
 `
 
 func (q *Queries) LastMatch(ctx context.Context) (Match, error) {
@@ -149,6 +153,7 @@ func (q *Queries) LastMatch(ctx context.Context) (Match, error) {
 		&i.GameVersion,
 		&i.WinningTeam,
 		&i.QueueID,
+		&i.ServerID,
 		&i.Red1ChampionID,
 		&i.Red2ChampionID,
 		&i.Red3ChampionID,

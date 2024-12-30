@@ -28,6 +28,7 @@ type Match struct {
 	GameVersion     string
 	WinningTeam     string
 	QueueID         int32
+	ServerID        string
 	Red1ChampionID  int32
 	Red2ChampionID  int32
 	Red3ChampionID  int32

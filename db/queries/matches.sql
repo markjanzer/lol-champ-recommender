@@ -4,7 +4,8 @@ INSERT INTO matches (
     game_start, 
     game_version, 
     winning_team, 
-    queue_id, 
+    queue_id,
+    server_id,
     blue_1_champion_id, 
     blue_2_champion_id, 
     blue_3_champion_id, 
@@ -16,7 +17,7 @@ INSERT INTO matches (
     red_4_champion_id, 
     red_5_champion_id
   ) 
-  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id;
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id;
 
 -- name: AllMatchIds :many
 SELECT matches.id FROM matches;
