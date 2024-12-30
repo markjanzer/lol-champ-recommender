@@ -11,30 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const allMatchIds = `-- name: AllMatchIds :many
-SELECT matches.id FROM matches
-`
-
-func (q *Queries) AllMatchIds(ctx context.Context) ([]int32, error) {
-	rows, err := q.db.Query(ctx, allMatchIds)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []int32
-	for rows.Next() {
-		var id int32
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		items = append(items, id)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const anyMatchesFromServer = `-- name: AnyMatchesFromServer :one
 SELECT EXISTS(SELECT 1 FROM matches WHERE server_id = $1)
 `

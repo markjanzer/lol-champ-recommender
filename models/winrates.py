@@ -110,7 +110,6 @@ if __name__ == "__main__":
   champion_stats = data.data[0]
   last_match_id = data.last_match_id[0]
   matches = get_matches_above_id(last_match_id)
-  print(len(matches))
   outcomes = [1 if match["winning_team"] == "blue" else 0 for _, match in matches.iterrows()]
 
   average_predictions = [average_prediction(pd.DataFrame([match]), champion_stats) for _, match in matches.iterrows()]
@@ -118,12 +117,5 @@ if __name__ == "__main__":
 
   print("Average Accuracy: ", calculate_accuracy(outcomes, average_predictions))
   print("Weighted Accuracy: ", calculate_accuracy(outcomes, weighted_predictions))
-
-  # for index, match in matches.iterrows():
-  #   match_df = pd.DataFrame([match])  # Convert single row to DataFrame
-  #   print(average_prediction(match_df, champion_stats))
-  #   print(weighted_prediction(match_df, champion_stats))
-  #   print(match['winning_team'])
-  #   print("---")
 
 
