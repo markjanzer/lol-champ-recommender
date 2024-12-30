@@ -36,3 +36,10 @@ def get_all_matches():
   SELECT * FROM matches
   """
   return pd.read_sql(query, engine)
+
+def get_matches_above_id(id: int):
+  engine = get_db_connection()
+  query = f"""
+  SELECT * FROM matches WHERE id > {id}
+  """
+  return pd.read_sql(query, engine)

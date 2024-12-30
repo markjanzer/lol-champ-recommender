@@ -1,4 +1,4 @@
-from utils.db_connector import get_champion_stats, get_all_matches
+from utils.db_connector import get_champion_stats, get_matches_above_id
 import pandas as pd
 import json
 import itertools
@@ -108,7 +108,9 @@ def calculate_accuracy(true_outcomes: list[int], predicted_probabilities: list[i
 if __name__ == "__main__":
   data = get_champion_stats()
   champion_stats = data.data[0]
-  matches = get_all_matches()
+  last_match_id = data.last_match_id[0]
+  matches = get_matches_above_id(last_match_id)
+  print(len(matches))
   outcomes = [1 if match["winning_team"] == "blue" else 0 for _, match in matches.iterrows()]
 
   average_predictions = [average_prediction(pd.DataFrame([match]), champion_stats) for _, match in matches.iterrows()]
