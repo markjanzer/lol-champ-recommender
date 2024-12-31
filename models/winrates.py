@@ -1,6 +1,4 @@
-from utils.db_connector import get_champion_stats, get_matches_above_id
 import pandas as pd
-import json
 import itertools
 from typing import TypedDict, Tuple
 
@@ -99,23 +97,5 @@ def average_prediction(match: pd.DataFrame, matchup_stats: dict) -> float:
 def weighted_prediction(match: pd.DataFrame, matchup_stats: dict) -> float:
   blue_team_synergy, red_team_synergy, blue_team_matchup = match_stats(match, matchup_stats)
   return predict_win_with_weighted_average(blue_team_synergy, red_team_synergy, blue_team_matchup)
-
-def calculate_accuracy(true_outcomes: list[int], predicted_probabilities: list[int]) -> float:
-  predictions = [1 if probability >= 0.5 else 0 for probability in predicted_probabilities]
-  correct = sum(1 for true, pred in zip(true_outcomes, predictions) if true == pred)
-  return correct / len(true_outcomes)
-
-if __name__ == "__main__":
-  data = get_champion_stats()
-  champion_stats = data.data[0]
-  last_match_id = data.last_match_id[0]
-  matches = get_matches_above_id(last_match_id)
-  outcomes = [1 if match["winning_team"] == "blue" else 0 for _, match in matches.iterrows()]
-
-  average_predictions = [average_prediction(pd.DataFrame([match]), champion_stats) for _, match in matches.iterrows()]
-  weighted_predictions = [weighted_prediction(pd.DataFrame([match]), champion_stats) for _, match in matches.iterrows()]
-
-  print("Average Accuracy: ", calculate_accuracy(outcomes, average_predictions))
-  print("Weighted Accuracy: ", calculate_accuracy(outcomes, weighted_predictions))
 
 
