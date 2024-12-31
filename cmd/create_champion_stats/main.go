@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"lol-champ-recommender/db"
+	"lol-champ-recommender/internal/champions"
 	"lol-champ-recommender/internal/database"
 	"os"
 )
@@ -152,14 +153,17 @@ func main() {
 	}
 	defer dbConn.Close(ctx)
 
-	// TODO: Update champions here!
+	err = champions.UpsertChampions(ctx, dbConn.Queries)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error upserting champions: %v\n", err)
+		os.Exit(1)
+	}
 
 	championStats, err := initChampionStats(ctx, dbConn.Queries)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error initializing champion stats: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Println(championStats)
 
 	// Limit the amount of matches we process to separate training and test matches
 	var percentile int32 = 70
@@ -175,8 +179,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	for index, id := range match_ids {
-		fmt.Println("Processing match", index+1, "of", len(match_ids))
+	for _, id := range match_ids {
 		match, err := dbConn.Queries.GetMatch(ctx, id)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error getting match with id %d: %v\n", id, err)
@@ -204,4 +207,6 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error creating champion stats: %v\n", err)
 		os.Exit(1)
 	}
+
+	fmt.Println("Created champion stats from", len(match_ids), "matches")
 }
