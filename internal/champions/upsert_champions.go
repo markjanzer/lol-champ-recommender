@@ -1,13 +1,11 @@
-package main
+package champions
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"lol-champ-recommender/db"
-	"lol-champ-recommender/internal/database"
 	"net/http"
 	"strconv"
 	"strings"
@@ -33,7 +31,7 @@ func championsURL(version string) string {
 	return fmt.Sprintf("https://ddragon.leagueoflegends.com/cdn/%s/data/en_US/champion.json", version)
 }
 
-func UpdateChampionsFromVersion(ctx context.Context, queries *db.Queries, version string) error {
+func upsertChampionsFromVersion(ctx context.Context, queries *db.Queries, version string) error {
 	simplifiedVersion := simplifyVersion(version)
 	championsURL := championsURL(simplifiedVersion)
 
@@ -72,27 +70,11 @@ func UpdateChampionsFromVersion(ctx context.Context, queries *db.Queries, versio
 	return nil
 }
 
-func UpdateChampions(ctx context.Context, queries *db.Queries) error {
+func UpsertChampions(ctx context.Context, queries *db.Queries) error {
 	lastMatch, err := queries.LastMatch(ctx)
 	if err != nil {
 		return err
 	}
 
-	return UpdateChampionsFromVersion(ctx, queries, lastMatch.GameVersion)
-}
-
-// Search the matches for the latest version, update the champions from that version
-func main() {
-	ctx := context.Background()
-
-	dbConn, err := database.Initialize(ctx)
-	if err != nil {
-		log.Fatalf("Error initializing database: %v", err)
-	}
-	defer dbConn.Close(ctx)
-
-	err = UpdateChampions(ctx, dbConn.Queries)
-	if err != nil {
-		log.Fatalf("Error updating champions: %v", err)
-	}
+	return upsertChampionsFromVersion(ctx, queries, lastMatch.GameVersion)
 }
