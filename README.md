@@ -13,7 +13,7 @@ This reads from a online file and creates the champions with a name and a api id
 This crawls the API for new matches and saves them.
 
 It keeps track of which players have been crawled and how recently. Will crawl them again after 21 days.
-It starts searching for new players to crawl from the existing saved matches. If there is none then it uses a seed player (me). **This won't work with a non-NA region**
+It starts searching for new players to crawl from the existing saved matches. If there is none then it uses a seed player from the seed_accounts.json file.
 When it finds a player it iterates over its past matches and saves them. They look like this:
 ```
 type CreateMatchParams struct {
