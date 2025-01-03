@@ -1,38 +1,21 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"log"
-	"lol-champ-recommender/internal/api"
-	"os"
-
-	"github.com/joho/godotenv"
+	"math"
 )
 
+func wilsonScore(wins, games float64) float64 {
+	if games == 0 {
+		return 0
+	}
+	z := 1.96 // 95% confidence
+	phat := wins / games
+	return (phat + z*z/(2*games) - z*math.Sqrt((phat*(1-phat)+z*z/(4*games))/games)) / (1 + z*z/games)
+}
+
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-
-	apiKey := os.Getenv("RIOT_API_KEY")
-	if apiKey == "" {
-		log.Fatal("RIOT_API_KEY environment variable is not set")
-	}
-
-	region := "sea"
-	ctx := context.Background()
-
-	client, err := api.NewRiotClient(apiKey, region, ctx)
-	if err != nil {
-		log.Fatalf("Failed to initialize Riot API client: %v", err)
-	}
-
-	body, err := client.GetMatchDetails("VN2_696785697")
-	if err != nil {
-		log.Fatalf("Failed to get match details: %v", err)
-	}
-
-	fmt.Println(string(body))
+	fmt.Println("wilsonScore(5, 9):", wilsonScore(5, 9))
+	fmt.Println("wilsonScore(10, 10):", wilsonScore(10, 10))
+	fmt.Println("wilsonScore(10, 100):", wilsonScore(10, 100))
 }

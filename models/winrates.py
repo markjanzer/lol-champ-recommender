@@ -29,7 +29,10 @@ class WinStats(TypedDict):
 def get_winrate(stats: WinStats) -> float:
   if stats['games'] == 0:
     return 0.5
-  return stats['wins'] / stats['games']
+  return smooth_winrate(stats['wins'], stats['games'], 5, 10)
+
+def smooth_winrate(wins: int, games: int, prior_wins: int, prior_games: int) -> float:
+  return (wins + prior_wins) / (games + prior_games)
 
 def get_all_combinations(numbers):
   return list(itertools.combinations(numbers, 2))
