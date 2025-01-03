@@ -202,6 +202,11 @@ func (c *Crawler) createMatch(matchID string) error {
 		return fmt.Errorf("error unmarshalling match data: %w", err)
 	}
 
+	if match.Info.QueueID == 1700 {
+		fmt.Println("Skipping ranked arena match", matchID)
+		return nil
+	}
+
 	err = saveMatch(c.Queries, &match)
 	if err != nil {
 		return fmt.Errorf("error saving match: %w", err)
