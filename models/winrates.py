@@ -1,7 +1,8 @@
 import pandas as pd
 import itertools
 from typing import TypedDict, Tuple
-
+from utils.db_connector import get_champion_stats, get_matches_above_id
+from validations import sophisticated_accuracy
 
 def get_teams(match):
   blue_team = [
@@ -93,12 +94,18 @@ def match_stats(match: pd.DataFrame, champion_stats: dict) -> Tuple[float, float
 
   return blue_team_synergy, red_team_synergy, blue_team_matchup
 
-def average_prediction(match: pd.DataFrame, matchup_stats: dict) -> float:
-  blue_team_synergy, red_team_synergy, blue_team_matchup = match_stats(match, matchup_stats)
-  return predict_win_with_average(blue_team_synergy, red_team_synergy, blue_team_matchup)
-
-def weighted_prediction(match: pd.DataFrame, matchup_stats: dict) -> float:
+def prediction(match: pd.DataFrame, matchup_stats: dict) -> float:
   blue_team_synergy, red_team_synergy, blue_team_matchup = match_stats(match, matchup_stats)
   return predict_win_with_weighted_average(blue_team_synergy, red_team_synergy, blue_team_matchup)
 
+def main():
+  data = get_champion_stats()
+  champion_stats = data.data[0]
+  last_match_id = data.last_match_id[0]
+  matches = get_matches_above_id(last_match_id)
+  outcomes = [1 if match["winning_team"] == "blue" else 0 for _, match in matches.iterrows()]
+  predictions = [prediction(pd.DataFrame([match]), champion_stats) for _, match in matches.iterrows()]
+  print("Weighted Accuracy: ", sophisticated_accuracy(outcomes, predictions))
 
+if __name__ == "__main__":
+  main()

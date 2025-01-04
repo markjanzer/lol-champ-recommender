@@ -43,3 +43,10 @@ def get_matches_above_id(id: int):
   SELECT * FROM matches WHERE id > {id}
   """
   return pd.read_sql(query, engine)
+
+def get_all_champions():
+  engine = get_db_connection()
+  query = """
+  SELECT * FROM champions ORDER BY id ASC
+  """
+  return pd.read_sql(query, engine)
