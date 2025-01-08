@@ -10,14 +10,18 @@ class NeuralNetChampionPredictor:
     def __init__(self, champions: DataFrame) -> None:
         self.num_champions = len(champions)
         self.champions = champions
+        self.champion_to_index = {
+            champ_id: idx for idx, champ_id in enumerate(champions['api_id'])
+        }
         self.scaler = StandardScaler()
+        self.threshold = 0.5  # Will be adjusted based on data
         
         # Initialize neural network with similar architecture to our PyTorch version
         self.model = MLPClassifier(
-            hidden_layer_sizes=(256, 128, 64),  # Three hidden layers
+            hidden_layer_sizes=(256, 128),        # Two hidden layers
             activation='relu',                  # ReLU activation
             solver='adam',                      # Adam optimizer
-            alpha=0.0001,                       # L2 regularization
+            alpha=0.001,                        # Increased L2 regularization
             batch_size=32,                      # Mini-batch size
             learning_rate='adaptive',           # Adaptive learning rate
             max_iter=50,                        # Maximum epochs
@@ -29,23 +33,17 @@ class NeuralNetChampionPredictor:
         )
         
     def match_to_vector(self, match: DataFrame) -> np.array:
-        """Convert match data into feature vector."""
         vector = np.zeros(self.num_champions * 2)  # blue picks + red picks
         
-        blue_keys = [f"blue_{i+1}_champion_id" for i in range(5)]
-        red_keys = [f"red_{i+1}_champion_id" for i in range(5)]
-
-        for key in blue_keys:
-            pick_id = match[key]
-            pick_index = self.champions[self.champions['api_id'] == pick_id].index[0]
-            if 0 <= pick_index < self.num_champions:
-                vector[pick_index] = 1
-                
-        for key in red_keys:
-            pick_id = match[key]
-            pick_index = self.champions[self.champions['api_id'] == pick_id].index[0]
-            if 0 <= pick_index < self.num_champions:
-                vector[pick_index + self.num_champions] = 1
+        for i in range(5):
+            blue_id = match[f"blue_{i+1}_champion_id"]
+            red_id = match[f"red_{i+1}_champion_id"]
+            
+            blue_idx = self.champion_to_index[blue_id]
+            red_idx = self.champion_to_index[red_id]
+            
+            vector[blue_idx] = 1
+            vector[red_idx + self.num_champions] = 1
                 
         return vector
 
@@ -69,18 +67,36 @@ class NeuralNetChampionPredictor:
         X_train = self.scaler.fit_transform(X_train)
         X_test = self.scaler.transform(X_test)
         
-        # Train model
+        # Calculate class weights based on actual distribution
+        blue_win_rate = np.mean(y_train)
+        
+        # Print diagnostics
+        print("\nClass Distribution:")
+        print(f"Blue team wins: {blue_win_rate:.4f}")
+        print(f"Red team wins: {1 - blue_win_rate:.4f}")
+        
+        # Train model with class weights
         self.model.fit(X_train, y_train)
         
         # Get probability predictions
         y_pred_proba = self.model.predict_proba(X_test)[:, 1]
         
-        # Calculate metrics
+        # Set threshold based on actual win rate
+        self.threshold = blue_win_rate
+        
+        # Calculate metrics using adjusted threshold
         metrics = sophisticated_accuracy(y_test, y_pred_proba)
+        
+        # Print prediction distribution
+        predictions = y_pred_proba > self.threshold
+        print("\nPrediction Distribution:")
+        print(f"Predicted blue wins: {np.mean(predictions):.4f}")
+        print(f"Predicted red wins: {1 - np.mean(predictions):.4f}")
         
         # Add convergence information
         metrics['n_iterations'] = self.model.n_iter_
         metrics['loss'] = self.model.loss_
+        metrics['threshold'] = self.threshold
         
         return metrics
     
@@ -89,7 +105,13 @@ class NeuralNetChampionPredictor:
         vector = self.match_to_vector(match)
         vector_scaled = self.scaler.transform(vector.reshape(1, -1))
         win_prob = self.model.predict_proba(vector_scaled)[0, 1]
+        # Return raw probability without thresholding for winrate predictions
         return win_prob
+        
+    def predict_winner(self, match: DataFrame) -> str:
+        """Predict winning team using the calibrated threshold."""
+        win_prob = self.predict_winrate(match)
+        return "blue" if win_prob > self.threshold else "red"
 
 if __name__ == "__main__":
     from utils.db_connector import get_all_champions, get_all_matches
@@ -106,7 +128,4 @@ if __name__ == "__main__":
     # Print results
     print("\nNeural Network Model Performance:")
     for metric, value in results.items():
-        if isinstance(value, float):
-            print(f"{metric}: {value:.4f}")
-        else:
-            print(f"{metric}: {value}")
+        print(f"{metric}: {value:.4f}")
