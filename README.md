@@ -1,9 +1,23 @@
 # Lol Champ Recommender
+This takes the current ally and enemy champions and recommends champions to play.
 
-Trying a variety of approaches to see which is the most effective
-at recommending champions for a given match. It should work with partial drafts, and it should also be able to 
+## Organization
+`/go`  populates the database with matches, and generates the champion_stats data that is used by the statistical model.
 
-## What it does
+`/python` validates the the model accuracy by looking at full matches and their results and using the models to predict the winner. This has several currently defunct machine learning models.
+
+## Usage
+To run go commands, navigate to the go directory and run
+```
+go run cmd/<command>/main.go
+```
+
+To run a python model, navigate to the python directory and run
+```
+pipenv run python3 -m lolrecommender.models.<model_name>
+```
+
+## Go commands
 These are largely internal notes for me to keep track of what I'm doing.
 
 **create_champions**
@@ -68,3 +82,4 @@ Still not 100% sure how much data is returned here, do we offer matchup specific
 
 **reset_db**
 This drops all of the tables and creates new ones (except for champions)
+
