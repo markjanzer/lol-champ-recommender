@@ -4,7 +4,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.neural_network import MLPClassifier
 from pandas.core.frame import DataFrame
 from typing import Tuple, Dict
-from validations import sophisticated_accuracy
+from lolrecommender.utils.validations import sophisticated_accuracy
 
 class NeuralNetChampionPredictor:
     def __init__(self, champions: DataFrame) -> None:

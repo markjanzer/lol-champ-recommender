@@ -18,10 +18,11 @@ type DB struct {
 }
 
 // Initialize creates a database connection, initializes the schema, and returns a DB struct
+// We shouldn't be loading the .env file here.
 func Initialize(ctx context.Context) (*DB, error) {
-	err := godotenv.Load()
+	err := godotenv.Load("../.env")
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Fatal("Error loading .env file: ", err)
 	}
 
 	connString := os.Getenv("DATABASE_URL")
@@ -36,7 +37,7 @@ func Initialize(ctx context.Context) (*DB, error) {
 	}
 
 	// Initialize schema
-	schemaSQL, err := os.ReadFile("db/schema.sql")
+	schemaSQL, err := os.ReadFile("../db/schema.sql")
 	if err != nil {
 		conn.Close(ctx)
 		return nil, fmt.Errorf("failed to read schema file: %w", err)

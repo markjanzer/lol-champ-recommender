@@ -280,7 +280,7 @@ func main() {
 
 	db, err := database.Initialize(ctx)
 	if err != nil {
-		log.Fatalf("Error initializing database: %v", err)
+		log.Fatal(err)
 	}
 	defer db.Close(ctx)
 

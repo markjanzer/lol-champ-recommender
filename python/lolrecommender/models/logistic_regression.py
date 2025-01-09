@@ -2,8 +2,8 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
-from validations import sophisticated_accuracy
-from utils.db_connector import get_all_champions, get_all_matches
+from lolrecommender.utils.validations import sophisticated_accuracy
+from lolrecommender.utils.db_connector import get_all_champions, get_all_matches
 from pandas.core.frame import DataFrame
 from typing import Tuple
 

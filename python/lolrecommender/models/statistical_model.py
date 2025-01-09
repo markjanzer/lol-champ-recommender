@@ -1,9 +1,10 @@
 import pandas as pd
 import itertools
 from typing import TypedDict, Tuple
-from utils.db_connector import get_champion_stats, get_matches_above_id
-from validations import sophisticated_accuracy
+from lolrecommender.utils.db_connector import get_champion_stats, get_matches_above_id
+from lolrecommender.utils.validations import sophisticated_accuracy
 
+# Change tab size to 4 spaces
 def get_teams(match):
   blue_team = [
     match.iloc[0]['blue_1_champion_id'] ,

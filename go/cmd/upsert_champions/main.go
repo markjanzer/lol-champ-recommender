@@ -12,7 +12,7 @@ func main() {
 
 	dbConn, err := database.Initialize(ctx)
 	if err != nil {
-		log.Fatalf("Error initializing database: %v", err)
+		log.Fatal(err)
 	}
 	defer dbConn.Close(ctx)
 

@@ -3,6 +3,6 @@ packages:
   - name: "db"
     path: "/db"
     queries: "./db/queries/"
-    schema: "./db/schema.sql"
+    schema: "../db/schema.sql"
     engine: "postgresql"
     sql_package: "pgx/v5"
