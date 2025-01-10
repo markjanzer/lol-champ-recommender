@@ -1,1 +1,9 @@
 .env
+
+# Next.js
+
+# Dependencies
+/next/node_modules
+
+# Build
+/next/.next
