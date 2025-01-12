@@ -28,6 +28,28 @@ type ChampionInteraction struct {
 	Games          int
 }
 
+// Taken from create_champion_stats/main.go
+type WinStats struct {
+	Wins  int `json:"wins"`
+	Games int `json:"games"`
+}
+
+type ChampionData struct {
+	Winrate   WinStats           `json:"winrate"`
+	Matchups  map[int32]WinStats `json:"matchups"`
+	Synergies map[int32]WinStats `json:"synergies"`
+}
+
+type ChampionDataMap map[int32]ChampionData
+
+// Ints are Riot IDs
+type ChampSelect struct {
+	Bans    []int32
+	Allies  []int32
+	Enemies []int32
+}
+
+// Utils
 func contains(arr []int32, val int32) bool {
 	for _, v := range arr {
 		if v == val {
@@ -43,10 +65,11 @@ func sortResults(results []ChampionPerformance) {
 	})
 }
 
-func RecommendChampions(ctx context.Context, queries *db.Queries, championStats ChampionDataMap, champSelect ChampSelect) ([]ChampionPerformance, error) {
-	allChampIds, err := queries.AllChampionRiotIds(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("error getting all champion IDs: %v", err)
+// RecommendChampions is the main function for recommending champions
+func RecommendChampions(championStats ChampionDataMap, champSelect ChampSelect) ([]ChampionPerformance, error) {
+	allChampIds := []int32{}
+	for k := range championStats {
+		allChampIds = append(allChampIds, k)
 	}
 
 	// Get all champions that are an ally, enemy, or banned
@@ -131,20 +154,6 @@ func RecommendChampions(ctx context.Context, queries *db.Queries, championStats 
 	return results, nil
 }
 
-// Taken from create_champion_stats/main.go
-type WinStats struct {
-	Wins  int `json:"wins"`
-	Games int `json:"games"`
-}
-
-type ChampionData struct {
-	Winrate   WinStats           `json:"winrate"`
-	Matchups  map[int32]WinStats `json:"matchups"`
-	Synergies map[int32]WinStats `json:"synergies"`
-}
-
-type ChampionDataMap map[int32]ChampionData
-
 // UnmarshalChampionStats converts JSON data to ChampionDataMap
 func unmarshalChampionStats(data []byte) (ChampionDataMap, error) {
 	// Temporary map to unmarshal JSON into
@@ -186,27 +195,7 @@ func unmarshalChampionStats(data []byte) (ChampionDataMap, error) {
 	return result, nil
 }
 
-func mapChampionsToIds(ctx context.Context, queries *db.Queries) (map[string]int32, error) {
-	champions, err := queries.AllChampions(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("error getting all champions: %v", err)
-	}
-
-	result := make(map[string]int32)
-	for _, champ := range champions {
-		result[champ.Name] = champ.ApiID
-	}
-
-	return result, nil
-}
-
-// Ints are Riot IDs
-type ChampSelect struct {
-	Bans    []int32
-	Allies  []int32
-	Enemies []int32
-}
-
+// Frormatting Result
 func formatAnswer(ctx context.Context, queries *db.Queries, champSelect ChampSelect, results []ChampionPerformance) error {
 	champsToIDs, err := mapChampionsToIds(ctx, queries)
 	if err != nil {
@@ -240,6 +229,20 @@ func formatAnswer(ctx context.Context, queries *db.Queries, champSelect ChampSel
 	}
 
 	return nil
+}
+
+func mapChampionsToIds(ctx context.Context, queries *db.Queries) (map[string]int32, error) {
+	champions, err := queries.AllChampions(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error getting all champions: %v", err)
+	}
+
+	result := make(map[string]int32)
+	for _, champ := range champions {
+		result[champ.Name] = champ.ApiID
+	}
+
+	return result, nil
 }
 
 func printChampionPerformance(champsToIDs map[string]int32, champion ChampionPerformance) {
@@ -314,7 +317,7 @@ func main() {
 	// 	Enemies: []int32{},
 	// }
 
-	r, err := RecommendChampions(ctx, db.Queries, championStats, champSelect)
+	r, err := RecommendChampions(championStats, champSelect)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error recommending champions: %v\n", err)
 		os.Exit(1)
