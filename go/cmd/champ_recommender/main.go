@@ -5,68 +5,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"lol-champ-recommender/db"
 	"lol-champ-recommender/internal/database"
+	"lol-champ-recommender/internal/recommender"
 	"os"
 	"sort"
 	"strconv"
-	"strings"
 )
 
-// Eventually want to add specific data to this
-type ChampionPerformance struct {
-	ChampionID     int32
-	WinProbability float64
-	Synergies      []ChampionInteraction
-	Matchups       []ChampionInteraction
-}
-
-type ChampionInteraction struct {
-	ChampionID     int32
-	WinProbability float64
-	Wins           int
-	Games          int
-}
-
-// Taken from create_champion_stats/main.go
-type WinStats struct {
-	Wins  int `json:"wins"`
-	Games int `json:"games"`
-}
-
-type ChampionData struct {
-	Winrate   WinStats           `json:"winrate"`
-	Matchups  map[int32]WinStats `json:"matchups"`
-	Synergies map[int32]WinStats `json:"synergies"`
-}
-
-type ChampionDataMap map[int32]ChampionData
-
-// Ints are Riot IDs
-type ChampSelect struct {
-	Bans    []int32
-	Allies  []int32
-	Enemies []int32
-}
-
-// Utils
-func contains(arr []int32, val int32) bool {
-	for _, v := range arr {
-		if v == val {
-			return true
-		}
-	}
-	return false
-}
-
-func sortResults(results []ChampionPerformance) {
-	sort.Slice(results, func(i, j int) bool {
-		return results[i].WinProbability > results[j].WinProbability
-	})
-}
-
 // RecommendChampions is the main function for recommending champions
-func RecommendChampions(championStats ChampionDataMap, champSelect ChampSelect) ([]ChampionPerformance, error) {
+func RecommendChampions(championStats recommender.ChampionDataMap, champSelect recommender.ChampSelect) ([]recommender.ChampionPerformance, error) {
 	allChampIds := []int32{}
 	for k := range championStats {
 		allChampIds = append(allChampIds, k)
@@ -76,14 +23,14 @@ func RecommendChampions(championStats ChampionDataMap, champSelect ChampSelect) 
 	unavailableChampIDs := append(champSelect.Allies, champSelect.Enemies...)
 	unavailableChampIDs = append(unavailableChampIDs, champSelect.Bans...)
 
-	var results []ChampionPerformance
+	var results []recommender.ChampionPerformance
 
 	for _, champID := range allChampIds {
 		if contains(unavailableChampIDs, champID) {
 			continue
 		}
 
-		championPerformance := ChampionPerformance{
+		championPerformance := recommender.ChampionPerformance{
 			ChampionID: champID,
 		}
 
@@ -101,7 +48,7 @@ func RecommendChampions(championStats ChampionDataMap, champSelect ChampSelect) 
 				winProbability = float64(synergy.Wins+5) / float64(synergy.Games+10)
 			}
 
-			championPerformance.Synergies = append(championPerformance.Synergies, ChampionInteraction{
+			championPerformance.Synergies = append(championPerformance.Synergies, recommender.ChampionInteraction{
 				ChampionID:     allyID,
 				WinProbability: winProbability,
 				Wins:           synergy.Wins,
@@ -121,7 +68,7 @@ func RecommendChampions(championStats ChampionDataMap, champSelect ChampSelect) 
 				// Smoothing winrate
 				winProbability = float64(matchup.Wins+5) / float64(matchup.Games+10)
 			}
-			championPerformance.Matchups = append(championPerformance.Matchups, ChampionInteraction{
+			championPerformance.Matchups = append(championPerformance.Matchups, recommender.ChampionInteraction{
 				ChampionID:     enemyID,
 				WinProbability: winProbability,
 				Wins:           matchup.Wins,
@@ -155,9 +102,9 @@ func RecommendChampions(championStats ChampionDataMap, champSelect ChampSelect) 
 }
 
 // UnmarshalChampionStats converts JSON data to ChampionDataMap
-func unmarshalChampionStats(data []byte) (ChampionDataMap, error) {
+func unmarshalChampionStats(data []byte) (recommender.ChampionDataMap, error) {
 	// Temporary map to unmarshal JSON into
-	var tempMap map[string]ChampionData
+	var tempMap map[string]recommender.ChampionData
 
 	err := json.Unmarshal(data, &tempMap)
 	if err != nil {
@@ -165,7 +112,7 @@ func unmarshalChampionStats(data []byte) (ChampionDataMap, error) {
 	}
 
 	// Create the final ChampionDataMap
-	result := make(ChampionDataMap)
+	result := make(recommender.ChampionDataMap)
 
 	for key, value := range tempMap {
 		// Convert string key to int32
@@ -175,10 +122,10 @@ func unmarshalChampionStats(data []byte) (ChampionDataMap, error) {
 		}
 
 		// Copy the ChampionData
-		champData := ChampionData{
+		champData := recommender.ChampionData{
 			Winrate:   value.Winrate,
-			Matchups:  make(map[int32]WinStats),
-			Synergies: make(map[int32]WinStats),
+			Matchups:  make(map[int32]recommender.WinStats),
+			Synergies: make(map[int32]recommender.WinStats),
 		}
 
 		// Convert matchups and synergies keys to int32
@@ -195,89 +142,20 @@ func unmarshalChampionStats(data []byte) (ChampionDataMap, error) {
 	return result, nil
 }
 
-// Frormatting Result
-func formatAnswer(ctx context.Context, queries *db.Queries, champSelect ChampSelect, results []ChampionPerformance) error {
-	champsToIDs, err := mapChampionsToIds(ctx, queries)
-	if err != nil {
-		return fmt.Errorf("error mapping champions to IDs: %v", err)
-	}
-
-	bannedChamps := []string{}
-	for _, ban := range champSelect.Bans {
-		bannedChamps = append(bannedChamps, IDToName(champsToIDs, ban))
-	}
-	bannedChampsString := strings.Join(bannedChamps, ", ")
-	fmt.Println("Bans:", bannedChampsString)
-
-	allyChamps := []string{}
-	for _, ally := range champSelect.Allies {
-		allyChamps = append(allyChamps, IDToName(champsToIDs, ally))
-	}
-	allyChampsString := strings.Join(allyChamps, ", ")
-	fmt.Println("Allies:", allyChampsString)
-
-	enemyChamps := []string{}
-	for _, enemy := range champSelect.Enemies {
-		enemyChamps = append(enemyChamps, IDToName(champsToIDs, enemy))
-	}
-	enemyChampsString := strings.Join(enemyChamps, ", ")
-	fmt.Println("Enemies:", enemyChampsString)
-
-	fmt.Println("Recommended:")
-	for _, result := range results {
-		printChampionPerformance(champsToIDs, result)
-	}
-
-	return nil
-}
-
-func mapChampionsToIds(ctx context.Context, queries *db.Queries) (map[string]int32, error) {
-	champions, err := queries.AllChampions(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("error getting all champions: %v", err)
-	}
-
-	result := make(map[string]int32)
-	for _, champ := range champions {
-		result[champ.Name] = champ.ApiID
-	}
-
-	return result, nil
-}
-
-func printChampionPerformance(champsToIDs map[string]int32, champion ChampionPerformance) {
-	championName := IDToName(champsToIDs, champion.ChampionID)
-	winPercentage := probabilityAsPercentage(champion.WinProbability)
-	matchupsString := printChampionInteractions(champsToIDs, champion.Matchups)
-	synergiesString := printChampionInteractions(champsToIDs, champion.Synergies)
-
-	fmt.Printf("%s: %s — MATCHUPS [ %s ] — SYNERGIES [ %s ]\n",
-		championName,
-		winPercentage,
-		matchupsString,
-		synergiesString)
-}
-
-func probabilityAsPercentage(probability float64) string {
-	return fmt.Sprintf("%.2f%%", probability*100)
-}
-
-func printChampionInteractions(champsToIDs map[string]int32, interactions []ChampionInteraction) string {
-	var result []string
-	for _, interaction := range interactions {
-		championName := IDToName(champsToIDs, interaction.ChampionID)
-		result = append(result, fmt.Sprintf("%s: %d/%d", championName, interaction.Wins, interaction.Games))
-	}
-	return strings.Join(result, ", ")
-}
-
-func IDToName(champions map[string]int32, id int32) string {
-	for name, champID := range champions {
-		if champID == id {
-			return name
+// Utils
+func contains(arr []int32, val int32) bool {
+	for _, v := range arr {
+		if v == val {
+			return true
 		}
 	}
-	return "Unknown"
+	return false
+}
+
+func sortResults(results []recommender.ChampionPerformance) {
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].WinProbability > results[j].WinProbability
+	})
 }
 
 func main() {
@@ -304,7 +182,7 @@ func main() {
 	// Banned Brand
 	// Allies: Caitlyn, Morgana
 	// Enemies: Ashe, Lulu
-	champSelect := ChampSelect{
+	champSelect := recommender.ChampSelect{
 		Bans:    []int32{63},
 		Allies:  []int32{51, 25},
 		Enemies: []int32{22, 117},
@@ -323,7 +201,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = formatAnswer(ctx, db.Queries, champSelect, r)
+	err = recommender.FormatAnswer(ctx, db.Queries, champSelect, r)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error formatting answer: %v\n", err)
 		os.Exit(1)
