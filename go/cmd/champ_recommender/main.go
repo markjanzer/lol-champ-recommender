@@ -44,13 +44,12 @@ func sortResults(results []ChampionPerformance) {
 }
 
 func RecommendChampions(ctx context.Context, queries *db.Queries, championStats ChampionDataMap, champSelect ChampSelect) ([]ChampionPerformance, error) {
-	// This might need to be updated to use riot IDs
-	allChampIds, err := queries.AllChampionIds(ctx)
+	allChampIds, err := queries.AllChampionRiotIds(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error getting all champion IDs: %v", err)
 	}
 
-	// Get all champions that are not an ally or an enemy
+	// Get all champions that are an ally, enemy, or banned
 	unavailableChampIDs := append(champSelect.Allies, champSelect.Enemies...)
 	unavailableChampIDs = append(unavailableChampIDs, champSelect.Bans...)
 
@@ -130,7 +129,7 @@ func RecommendChampions(ctx context.Context, queries *db.Queries, championStats 
 	return results, nil
 }
 
-// Taken from match_data/main.go
+// Taken from create_champion_stats/main.go
 type WinStats struct {
 	Wins  int `json:"wins"`
 	Games int `json:"games"`
@@ -193,12 +192,13 @@ func mapChampionsToIds(ctx context.Context, queries *db.Queries) (map[string]int
 
 	result := make(map[string]int32)
 	for _, champ := range champions {
-		result[champ.Name] = champ.ID
+		result[champ.Name] = champ.ApiID
 	}
 
 	return result, nil
 }
 
+// Ints are Riot IDs
 type ChampSelect struct {
 	Bans    []int32
 	Allies  []int32
@@ -296,10 +296,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Banned Brand
+	// Played Caitlyn, Morgana
+	// Against Ashe, Lulu
 	champSelect := ChampSelect{
-		Bans:    []int32{1, 2, 3},
-		Allies:  []int32{4, 5, 6},
-		Enemies: []int32{7, 8, 9},
+		Bans:    []int32{63},
+		Allies:  []int32{51, 25},
+		Enemies: []int32{22, 117},
 	}
 
 	r, err := RecommendChampions(ctx, db.Queries, championStats, champSelect)
