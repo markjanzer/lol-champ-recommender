@@ -74,7 +74,8 @@ func RecommendChampions(ctx context.Context, queries *db.Queries, championStats 
 			if synergy.Games == 0 {
 				winProbability = 0.50
 			} else {
-				winProbability = float64(synergy.Wins) / float64(synergy.Games)
+				// Smoothing winrate
+				winProbability = float64(synergy.Wins+5) / float64(synergy.Games+10)
 			}
 
 			championPerformance.Synergies = append(championPerformance.Synergies, ChampionInteraction{
@@ -94,7 +95,8 @@ func RecommendChampions(ctx context.Context, queries *db.Queries, championStats 
 			if matchup.Games == 0 {
 				winProbability = 0.50
 			} else {
-				winProbability = float64(matchup.Wins) / float64(matchup.Games)
+				// Smoothing winrate
+				winProbability = float64(matchup.Wins+5) / float64(matchup.Games+10)
 			}
 			championPerformance.Matchups = append(championPerformance.Matchups, ChampionInteraction{
 				ChampionID:     enemyID,
