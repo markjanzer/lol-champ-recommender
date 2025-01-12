@@ -2,26 +2,17 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"lol-champ-recommender/internal/database"
 	"lol-champ-recommender/internal/recommender"
 	"os"
 	"sort"
-	"strconv"
 )
 
-// RecommendChampions is the main function for recommending champions
 func RecommendChampions(championStats recommender.ChampionDataMap, champSelect recommender.ChampSelect) ([]recommender.ChampionPerformance, error) {
-	allChampIds := []int32{}
-	for k := range championStats {
-		allChampIds = append(allChampIds, k)
-	}
-
-	// Get all champions that are an ally, enemy, or banned
-	unavailableChampIDs := append(champSelect.Allies, champSelect.Enemies...)
-	unavailableChampIDs = append(unavailableChampIDs, champSelect.Bans...)
+	allChampIds := getAllChampionIDs(championStats)
+	unavailableChampIDs := getUnavailableChampionIDs(champSelect)
 
 	var results []recommender.ChampionPerformance
 
@@ -30,70 +21,12 @@ func RecommendChampions(championStats recommender.ChampionDataMap, champSelect r
 			continue
 		}
 
-		championPerformance := recommender.ChampionPerformance{
-			ChampionID: champID,
+		performance, err := getChampionPerformance(champID, championStats, champSelect)
+		if err != nil {
+			return nil, fmt.Errorf("error getting performance for champion %d: %w", champID, err)
 		}
 
-		for _, allyID := range champSelect.Allies {
-			synergy, ok := championStats[champID].Synergies[allyID]
-			if !ok {
-				return nil, fmt.Errorf("synergy not found for champion %d and ally %d", champID, allyID)
-			}
-
-			var winProbability float64
-			if synergy.Games == 0 {
-				winProbability = 0.50
-			} else {
-				// Smoothing winrate
-				winProbability = float64(synergy.Wins+5) / float64(synergy.Games+10)
-			}
-
-			championPerformance.Synergies = append(championPerformance.Synergies, recommender.ChampionInteraction{
-				ChampionID:     allyID,
-				WinProbability: winProbability,
-				Wins:           synergy.Wins,
-				Games:          synergy.Games,
-			})
-		}
-
-		for _, enemyID := range champSelect.Enemies {
-			matchup, ok := championStats[champID].Matchups[enemyID]
-			if !ok {
-				return nil, fmt.Errorf("matchup not found for champion %d and enemy %d", champID, enemyID)
-			}
-			var winProbability float64
-			if matchup.Games == 0 {
-				winProbability = 0.50
-			} else {
-				// Smoothing winrate
-				winProbability = float64(matchup.Wins+5) / float64(matchup.Games+10)
-			}
-			championPerformance.Matchups = append(championPerformance.Matchups, recommender.ChampionInteraction{
-				ChampionID:     enemyID,
-				WinProbability: winProbability,
-				Wins:           matchup.Wins,
-				Games:          matchup.Games,
-			})
-		}
-
-		winProbability := 0.0
-		dataPoints := len(championPerformance.Synergies) + len(championPerformance.Matchups)
-		if dataPoints > 0 {
-			for _, synergy := range championPerformance.Synergies {
-				winProbability += synergy.WinProbability
-			}
-
-			for _, matchup := range championPerformance.Matchups {
-				winProbability += matchup.WinProbability
-			}
-
-			winProbability /= float64(dataPoints)
-		} else {
-			winProbability = 0.50
-		}
-
-		championPerformance.WinProbability = winProbability
-		results = append(results, championPerformance)
+		results = append(results, performance)
 	}
 
 	sortResults(results)
@@ -101,45 +34,87 @@ func RecommendChampions(championStats recommender.ChampionDataMap, champSelect r
 	return results, nil
 }
 
-// UnmarshalChampionStats converts JSON data to ChampionDataMap
-func unmarshalChampionStats(data []byte) (recommender.ChampionDataMap, error) {
-	// Temporary map to unmarshal JSON into
-	var tempMap map[string]recommender.ChampionData
+func getAllChampionIDs(championStats recommender.ChampionDataMap) []int32 {
+	ids := make([]int32, 0, len(championStats))
+	for k := range championStats {
+		ids = append(ids, k)
+	}
+	return ids
+}
 
-	err := json.Unmarshal(data, &tempMap)
+func getUnavailableChampionIDs(champSelect recommender.ChampSelect) []int32 {
+	result := append([]int32{}, champSelect.Allies...)
+	result = append(result, champSelect.Enemies...)
+	result = append(result, champSelect.Bans...)
+	return result
+}
+
+func getChampionPerformance(champID int32, championStats recommender.ChampionDataMap, champSelect recommender.ChampSelect) (recommender.ChampionPerformance, error) {
+	performance := recommender.ChampionPerformance{
+		ChampionID: champID,
+	}
+
+	synergies, err := getChampionInteractions(champID, championStats[champID].Synergies, champSelect.Allies)
 	if err != nil {
-		return nil, err
+		return recommender.ChampionPerformance{}, err
+	}
+	performance.Synergies = synergies
+
+	matchups, err := getChampionInteractions(champID, championStats[champID].Matchups, champSelect.Enemies)
+	if err != nil {
+		return recommender.ChampionPerformance{}, err
+	}
+	performance.Matchups = matchups
+
+	performance.WinProbability = calculateWinProbability(synergies, matchups)
+
+	return performance, nil
+}
+
+func getChampionInteractions(champID int32, stats map[int32]recommender.WinStats, championIDs []int32) ([]recommender.ChampionInteraction, error) {
+	var interactions []recommender.ChampionInteraction
+
+	for _, targetID := range championIDs {
+		stat, ok := stats[targetID]
+		if !ok {
+			return nil, fmt.Errorf("stats not found for champion %d and target %d", champID, targetID)
+		}
+
+		interactions = append(interactions, createInteraction(targetID, stat))
 	}
 
-	// Create the final ChampionDataMap
-	result := make(recommender.ChampionDataMap)
+	return interactions, nil
+}
 
-	for key, value := range tempMap {
-		// Convert string key to int32
-		champID, err := strconv.ParseInt(key, 10, 32)
-		if err != nil {
-			return nil, err
-		}
-
-		// Copy the ChampionData
-		champData := recommender.ChampionData{
-			Winrate:   value.Winrate,
-			Matchups:  make(map[int32]recommender.WinStats),
-			Synergies: make(map[int32]recommender.WinStats),
-		}
-
-		// Convert matchups and synergies keys to int32
-		for k, v := range value.Matchups {
-			champData.Matchups[int32(k)] = v
-		}
-		for k, v := range value.Synergies {
-			champData.Synergies[int32(k)] = v
-		}
-
-		result[int32(champID)] = champData
+func createInteraction(championID int32, stats recommender.WinStats) recommender.ChampionInteraction {
+	var winProbability float64
+	if stats.Games == 0 {
+		winProbability = 0.50
+	} else {
+		// Smoothing winrate
+		winProbability = float64(stats.Wins+5) / float64(stats.Games+10)
 	}
 
-	return result, nil
+	return recommender.ChampionInteraction{
+		ChampionID:     championID,
+		WinProbability: winProbability,
+		Wins:           stats.Wins,
+		Games:          stats.Games,
+	}
+}
+
+func calculateWinProbability(synergies, matchups []recommender.ChampionInteraction) float64 {
+	interactions := append(synergies, matchups...)
+	if len(interactions) == 0 {
+		return 0.50
+	}
+
+	total := 0.0
+	for _, interaction := range interactions {
+		total += interaction.WinProbability
+	}
+
+	return total / float64(len(interactions))
 }
 
 // Utils
@@ -173,7 +148,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	championStats, err := unmarshalChampionStats(recordWithStats.Data)
+	championStats, err := recommender.UnmarshalChampionStats(recordWithStats.Data)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error unmarshalling champion stats: %v\n", err)
 		os.Exit(1)
