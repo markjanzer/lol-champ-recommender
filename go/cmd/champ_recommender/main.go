@@ -157,18 +157,18 @@ func main() {
 	// Banned Brand
 	// Allies: Caitlyn, Morgana
 	// Enemies: Ashe, Lulu
-	champSelect := recommender.ChampSelect{
-		Bans:    []int32{63},
-		Allies:  []int32{51, 25},
-		Enemies: []int32{22, 117},
-	}
+	// champSelect := recommender.ChampSelect{
+	// 	Bans:    []int32{63},
+	// 	Allies:  []int32{51, 25},
+	// 	Enemies: []int32{22, 117},
+	// }
 
 	// Allies: Galio, Neeko
-	// champSelect := ChampSelect{
-	// 	Bans:    []int32{},
-	// 	Allies:  []int32{3, 518},
-	// 	Enemies: []int32{},
-	// }
+	champSelect := recommender.ChampSelect{
+		Bans:    []int32{},
+		Allies:  []int32{3, 67},
+		Enemies: []int32{},
+	}
 
 	r, err := RecommendChampions(championStats, champSelect)
 	if err != nil {

@@ -8,7 +8,7 @@ const main = async () => {
 
     const champSelect = {
       bans: [63],
-      allies: [51, 25],
+      allies: [3, 67],
       enemies: [22, 117],
     }
 
