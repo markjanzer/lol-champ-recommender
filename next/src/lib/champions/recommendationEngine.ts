@@ -1,9 +1,9 @@
 import { ChampionPerformance, WinStats, ChampionInteraction, ChampionDataMap, ChampSelect } from '../types/champions';
 
-export async function recommendChampions(
+export function recommendChampions(
   championStats: ChampionDataMap,
   champSelect: ChampSelect
-): Promise<ChampionPerformance[]> {
+): ChampionPerformance[] {
   const allChampIds = Object.keys(championStats).map(Number)
   const unavailableChampIds = [...champSelect.bans, ...champSelect.allies, ...champSelect.enemies]
   const availableChampIds = allChampIds.filter(id => !unavailableChampIds.includes(id))
@@ -38,6 +38,7 @@ function createInteraction(stats: WinStats, championId: number): ChampionInterac
   }
 
   let winProbability: number = 0.50
+  console.log(stats)
   if (stats.games > 0) {
     // Smoothing winrate
     winProbability = (stats.wins + 5) / (stats.games + 10)
