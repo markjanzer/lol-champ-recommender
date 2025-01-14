@@ -11,6 +11,31 @@ interface Props {
   }[];
 }
 
+interface ChampionComboboxProps {
+  champions: {
+    name: string;
+    api_id: number;
+  }[];
+  onChange: (value: number) => void;
+  value: number;
+}
+
+function ChampionCombobox({champions, onChange, value}: ChampionComboboxProps) {
+  return (
+    <div className="mt-2">
+      <input
+        className="border border-gray-300 rounded-md p-2 text-black"
+        type="number"
+        min={1}
+        max={10000}
+          value={value || ''}
+        onChange={(e) => onChange(parseInt(e.target.value) || 0)}
+      />
+      <span className="text-sm ml-2 font-bold">{champions.find(champion => champion.api_id === value)?.name}</span>
+    </div>
+  )
+}
+
 export default function ChampionRecommender({championStats, champions}: Props) {
   const [allies, setAllies] = useState<number[]>([0,0,0,0,0]);
   const [enemies, setEnemies] = useState<number[]>([0,0,0,0,0]);
@@ -58,33 +83,23 @@ export default function ChampionRecommender({championStats, champions}: Props) {
           <div className="col-span-1">
             <h2 className="text-lg font-bold">Allies</h2>
             {allies.map((ally, index) => (
-              <div key={index} className="mt-2">
-                <input
-                  className="border border-gray-300 rounded-md p-2 text-black"
-                  type="number"
-                  min={1}
-                  max={10000}
-                  value={ally || ''}
-                  onChange={(e) => handleAllyChange(index, parseInt(e.target.value) || 0)}
-                />
-                <span className="text-sm ml-2 font-bold">{champions.find(champion => champion.api_id === ally)?.name}</span>
-              </div>
+              <ChampionCombobox 
+                key={index} 
+                champions={champions} 
+                onChange={(value) => handleAllyChange(index, value)} 
+                value={ally} 
+              />
             ))}
           </div>
           <div className="col-span-1">
             <h2 className="text-lg font-bold">Enemies</h2>
             {enemies.map((enemy, index) => (
-              <div key={index} className="mt-2">
-                <input
-                  className="border border-gray-300 rounded-md p-2 text-black"
-                  type="number"
-                  min={1}
-                  max={10000}
-                  value={enemy || ''}
-                  onChange={(e) => handleEnemyChange(index, parseInt(e.target.value) || 0)}
-                />
-                <span className="text-sm ml-2 font-bold">{champions.find(champion => champion.api_id === enemy)?.name}</span>
-              </div>
+              <ChampionCombobox 
+                key={index} 
+                champions={champions} 
+                onChange={(value) => handleEnemyChange(index, value)} 
+                value={enemy} 
+              />
             ))}
           </div>
         </div>
