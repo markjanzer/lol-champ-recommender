@@ -12,7 +12,7 @@ interface Props {
 }
 
 export default function ChampionRecommender({championStats, champions}: Props) {
-  const [allies, setAllies] = useState<number[]>([0,0,0,0]);
+  const [allies, setAllies] = useState<number[]>([0,0,0,0,0]);
   const [enemies, setEnemies] = useState<number[]>([0,0,0,0,0]);
   const [recommendations, setRecommendations] = useState<ChampionPerformance[]>([]);
 
