@@ -5,9 +5,10 @@ import { ChampionDataMap, ChampionPerformance } from "@/lib/types/champions"
 
 interface Props {
   championStats: ChampionDataMap;
+  championIds: number[];
 }
 
-export default function ChampionRecommender({championStats}: Props) {
+export default function ChampionRecommender({championStats, championIds}: Props) {
   const [allies, setAllies] = useState<number[]>([0,0,0,0]);
   const [enemies, setEnemies] = useState<number[]>([0,0,0,0,0]);
   const [recommendations, setRecommendations] = useState<ChampionPerformance[]>([]);
@@ -31,16 +32,17 @@ export default function ChampionRecommender({championStats}: Props) {
       championStats: Object.keys(championStats).length
     });
 
-    const inputAllies = allies.filter(ally => ally !== 0);
-    const inputEnemies = enemies.filter(enemy => enemy !== 0);
+    const validAllies = allies.filter(ally => championIds.includes(ally));
+    const validEnemies = enemies.filter(enemy => championIds.includes(enemy));
 
-    if (inputAllies.length === 0 && inputEnemies.length === 0) {
+    if (validAllies.length === 0 && validEnemies.length === 0) {
+      setRecommendations([]);
       return;
     }
     
-    const recommendations = recommendChampions(championStats, { allies: inputAllies, enemies: inputEnemies, bans: [] });
+    const recommendations = recommendChampions(championStats, { allies: validAllies, enemies: validEnemies, bans: [] });
     setRecommendations(recommendations);
-  }, [championStats, allies, enemies]);
+  }, [championStats, championIds, allies, enemies]);
 
 
   return (
@@ -52,7 +54,7 @@ export default function ChampionRecommender({championStats}: Props) {
           {allies.map((ally, index) => (
             <input
               key={index}
-              className="border border-gray-300 rounded-md p-2"
+              className="border border-gray-300 rounded-md p-2 text-black"
               type="number"
               min={1}
               max={10000}
@@ -66,7 +68,7 @@ export default function ChampionRecommender({championStats}: Props) {
           {enemies.map((enemy, index) => (
             <input
               key={index}
-              className="border border-gray-300 rounded-md p-2"
+              className="border border-gray-300 rounded-md p-2 text-black"
               type="number"
               min={1}
               max={10000}
@@ -74,9 +76,6 @@ export default function ChampionRecommender({championStats}: Props) {
               onChange={(e) => handleEnemyChange(index, parseInt(e.target.value) || 0)}
             />
           ))}
-        </div>
-        <div className="mt-4">
-          <button className="bg-blue-500 text-white rounded-md p-2">Recommend</button>
         </div>
       </div>
       <div className="mt-4">

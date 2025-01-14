@@ -33,7 +33,7 @@ export default async function Home() {
 
       {/* Probably don't want to keep this fixed, but it helps for now. */}
       <div className="col-span-3 fixed top-10 right-40">
-        <ChampionRecommender championStats={championStats} />
+        <ChampionRecommender championStats={championStats} championIds={champions.map(champion => champion.api_id)} />
       </div>
     </div>
   );
