@@ -1,14 +1,17 @@
 'use client';
-import { useEffect, useState } from "react";
+import { useEffect, useState, Fragment } from "react";
 import { recommendChampions } from "@/lib/champions/recommendationEngine";
 import { ChampionDataMap, ChampionPerformance } from "@/lib/types/champions"
 
 interface Props {
   championStats: ChampionDataMap;
-  championIds: number[];
+  champions: {
+    name: string;
+    api_id: number;
+  }[];
 }
 
-export default function ChampionRecommender({championStats, championIds}: Props) {
+export default function ChampionRecommender({championStats, champions}: Props) {
   const [allies, setAllies] = useState<number[]>([0,0,0,0]);
   const [enemies, setEnemies] = useState<number[]>([0,0,0,0,0]);
   const [recommendations, setRecommendations] = useState<ChampionPerformance[]>([]);
@@ -26,14 +29,8 @@ export default function ChampionRecommender({championStats, championIds}: Props)
   };
 
   useEffect(() => {
-    console.log('Effect triggered with:', {
-      allies,
-      enemies,
-      championStats: Object.keys(championStats).length
-    });
-
-    const validAllies = allies.filter(ally => championIds.includes(ally));
-    const validEnemies = enemies.filter(enemy => championIds.includes(enemy));
+    const validAllies = allies.filter(ally => champions.some(champion => champion.api_id === ally));
+    const validEnemies = enemies.filter(enemy => champions.some(champion => champion.api_id === enemy));
 
     if (validAllies.length === 0 && validEnemies.length === 0) {
       setRecommendations([]);
@@ -42,40 +39,54 @@ export default function ChampionRecommender({championStats, championIds}: Props)
     
     const recommendations = recommendChampions(championStats, { allies: validAllies, enemies: validEnemies, bans: [] });
     setRecommendations(recommendations);
-  }, [championStats, championIds, allies, enemies]);
+  }, [championStats, champions, allies, enemies]);
 
+
+  const getChampionName = (apiId: number) => {
+    return champions.find(champion => champion.api_id === apiId)?.name;
+  };
+
+  const formatWinrate = (winrate: number) => {
+    return `${(winrate * 100).toFixed(2)}%`;
+  };
 
   return (
     <>
       <div>
         <h1 className="text-2xl font-bold">Pick Champions</h1>
-        <div className="mt-4">
-          <h2 className="text-lg font-bold">Allies</h2>
-          {allies.map((ally, index) => (
-            <input
-              key={index}
-              className="border border-gray-300 rounded-md p-2 text-black"
-              type="number"
-              min={1}
-              max={10000}
-              value={ally || ''}
-              onChange={(e) => handleAllyChange(index, parseInt(e.target.value) || 0)}
-            />
-          ))}
-        </div>
-        <div className="mt-4">
-          <h2 className="text-lg font-bold">Enemies</h2>
-          {enemies.map((enemy, index) => (
-            <input
-              key={index}
-              className="border border-gray-300 rounded-md p-2 text-black"
-              type="number"
-              min={1}
-              max={10000}
-              value={enemy || ''}
-              onChange={(e) => handleEnemyChange(index, parseInt(e.target.value) || 0)}
-            />
-          ))}
+        <div className="mt-4 grid grid-cols-2">
+          <div className="col-span-1">
+            <h2 className="text-lg font-bold">Allies</h2>
+            {allies.map((ally, index) => (
+              <div key={index} className="mt-2">
+                <input
+                  className="border border-gray-300 rounded-md p-2 text-black"
+                  type="number"
+                  min={1}
+                  max={10000}
+                  value={ally || ''}
+                  onChange={(e) => handleAllyChange(index, parseInt(e.target.value) || 0)}
+                />
+                <span className="text-sm ml-2 font-bold">{champions.find(champion => champion.api_id === ally)?.name}</span>
+              </div>
+            ))}
+          </div>
+          <div className="col-span-1">
+            <h2 className="text-lg font-bold">Enemies</h2>
+            {enemies.map((enemy, index) => (
+              <div key={index} className="mt-2">
+                <input
+                  className="border border-gray-300 rounded-md p-2 text-black"
+                  type="number"
+                  min={1}
+                  max={10000}
+                  value={enemy || ''}
+                  onChange={(e) => handleEnemyChange(index, parseInt(e.target.value) || 0)}
+                />
+                <span className="text-sm ml-2 font-bold">{champions.find(champion => champion.api_id === enemy)?.name}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
       <div className="mt-4">
@@ -83,7 +94,11 @@ export default function ChampionRecommender({championStats, championIds}: Props)
         <div className="mt-4">
           {recommendations.map((recommendation) => (
             <div key={recommendation.championId}>
-              {recommendation.championId}
+              <p className="text-lg font-bold">{getChampionName(recommendation.championId)}: {formatWinrate(recommendation.winProbability)}</p>
+              <div>
+                <p>Synergies: [{recommendation.synergies.map(synergy => `${getChampionName(synergy.championId)} - ${formatWinrate(synergy.winProbability)}`).join(', ')}]</p>
+                <p>Matchups: [{recommendation.matchups.map(matchup => `${getChampionName(matchup.championId)} - ${formatWinrate(matchup.winProbability)}`).join(', ')}]</p>
+              </div>
             </div>
           ))}
         </div>

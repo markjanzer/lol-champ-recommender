@@ -176,6 +176,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	fmt.Println(r)
+
 	err = recommender.FormatAnswer(ctx, db.Queries, champSelect, r)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error formatting answer: %v\n", err)

@@ -12,7 +12,7 @@ const main = async () => {
       enemies: [22, 117],
     }
 
-    const result = await recommendChampions(lastChampionStats, champSelect)
+    const result = recommendChampions(lastChampionStats, champSelect)
     console.log(result)
   } catch (error) { 
     console.error('Error connecting to db', error)

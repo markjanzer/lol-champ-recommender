@@ -19,7 +19,7 @@ export default async function Home() {
     <div className="grid grid-cols-4 mx-auto max-w-6xl mt-10">
       <div className="col-span-1">
         <h2 className="text-2xl font-bold">Champions</h2>
-        <table className="table-fixed">
+        <table className="table-fixed mt-4">
           <tbody>
             {champions.map((champion) => (
               <tr key={champion.api_id}>
@@ -32,8 +32,8 @@ export default async function Home() {
       </div>
 
       {/* Probably don't want to keep this fixed, but it helps for now. */}
-      <div className="col-span-3 fixed top-10 right-40">
-        <ChampionRecommender championStats={championStats} championIds={champions.map(champion => champion.api_id)} />
+      <div className="col-span-3">
+        <ChampionRecommender championStats={championStats} champions={champions} />
       </div>
     </div>
   );
