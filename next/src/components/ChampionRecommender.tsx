@@ -82,7 +82,7 @@ export default function ChampionRecommender({championStats, champions}: Props) {
         </div>
       </div>
       <div className="mt-4">
-        <h2 className="text-2xl font-bold">Selected Champions</h2>
+        <h2 className="text-2xl font-bold">Recommended Champions</h2>
         <div className="mt-4">
           {recommendations.map((recommendation) => (
             <div key={recommendation.championId}>
