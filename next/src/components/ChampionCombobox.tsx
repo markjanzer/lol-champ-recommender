@@ -29,9 +29,15 @@ export default function ChampionCombobox({champions, onChange, value}: Props) {
           displayValue={(champion: Champion | null) => champion?.name ?? ''}
           onChange={(event) => setQuery(event.target.value)}
         />
-        <ComboboxOptions>
+        <ComboboxOptions
+          className="border border-gray-300 text-black"
+        >
           {filteredChampions.map(champion => (
-            <ComboboxOption key={champion.api_id} value={champion}>
+            <ComboboxOption 
+              key={champion.api_id} 
+              value={champion}
+              className=" p-2 text-black data-[focus]:bg-gray-200"
+            >
               {champion.name}
             </ComboboxOption>
           ))}
