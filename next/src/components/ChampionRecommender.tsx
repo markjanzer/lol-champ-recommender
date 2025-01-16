@@ -1,44 +1,45 @@
 'use client';
 import { useEffect, useState, Fragment } from "react";
 import { recommendChampions } from "@/lib/champions/recommendationEngine";
-import { ChampionDataMap, ChampionPerformance } from "@/lib/types/champions"
+import { ChampionDataMap, ChampionPerformance, Champion } from "@/lib/types/champions"
 import ChampionCombobox from "./ChampionCombobox";
 
 interface Props {
   championStats: ChampionDataMap;
-  champions: {
-    name: string;
-    api_id: number;
-  }[];
+  champions: Champion[];
 }
 
 export default function ChampionRecommender({championStats, champions}: Props) {
-  const [allies, setAllies] = useState<number[]>([0,0,0,0,0]);
-  const [enemies, setEnemies] = useState<number[]>([0,0,0,0,0]);
+  const [allies, setAllies] = useState<(Champion | null)[]>([null, null, null, null, null]);
+  const [enemies, setEnemies] = useState<(Champion | null)[]>([null, null, null, null, null]);
   const [recommendations, setRecommendations] = useState<ChampionPerformance[]>([]);
 
-  const handleAllyChange = (index: number, value: number) => {
+  const handleAllyChange = (index: number, value: Champion) => {
     const newAllies = [...allies];
     newAllies[index] = value;
     setAllies(newAllies);
   };
 
-  const handleEnemyChange = (index: number, value: number) => {
+  const handleEnemyChange = (index: number, value: Champion) => {
     const newEnemies = [...enemies];
     newEnemies[index] = value;
     setEnemies(newEnemies);
   };
 
   useEffect(() => {
-    const validAllies = allies.filter(ally => champions.some(champion => champion.api_id === ally));
-    const validEnemies = enemies.filter(enemy => champions.some(champion => champion.api_id === enemy));
+    const validAllies = allies.filter((ally): ally is Champion => ally !== null);
+    const validEnemies = enemies.filter((enemy): enemy is Champion => enemy !== null);
 
     if (validAllies.length === 0 && validEnemies.length === 0) {
       setRecommendations([]);
       return;
     }
     
-    const recommendations = recommendChampions(championStats, { allies: validAllies, enemies: validEnemies, bans: [] });
+    const recommendations = recommendChampions(championStats, { 
+      allies: validAllies.map(ally => ally.api_id), 
+      enemies: validEnemies.map(enemy => enemy.api_id), 
+      bans: [] 
+    });
     setRecommendations(recommendations);
   }, [championStats, champions, allies, enemies]);
 
@@ -62,7 +63,7 @@ export default function ChampionRecommender({championStats, champions}: Props) {
               <ChampionCombobox 
                 key={index} 
                 champions={champions} 
-                onChange={(value) => handleAllyChange(index, value)} 
+                onChange={(champion) => handleAllyChange(index, champion)} 
                 value={ally} 
               />
             ))}
@@ -73,7 +74,7 @@ export default function ChampionRecommender({championStats, champions}: Props) {
               <ChampionCombobox 
                 key={index} 
                 champions={champions} 
-                onChange={(value) => handleEnemyChange(index, value)} 
+                onChange={(champion) => handleEnemyChange(index, champion)} 
                 value={enemy} 
               />
             ))}

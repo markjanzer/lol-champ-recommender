@@ -1,37 +1,25 @@
 'use client';
 import { Combobox, ComboboxInput, ComboboxOption, ComboboxOptions } from '@headlessui/react'
-import { useState } from 'react';
-
+import { Champion } from '@/lib/types/champions';
 interface Props {
-  champions: {
-    name: string;
-    api_id: number;
-  }[];
-  onChange: (value: number) => void;
-  value: number;
+  champions: Champion[]
+  onChange: (value: Champion) => void;
+  value: Champion | null;
 }
 
 export default function ChampionCombobox({champions, onChange, value}: Props) {
-  const [selectedChampionId, setSelectedChampionId] = useState(value);
-
-  const handleChange = (championId: number) => {
-    setSelectedChampionId(championId);
-    onChange(championId);
-  }
-  
   return (
     <div className="mt-2">
-      <Combobox value={selectedChampionId} onChange={handleChange}>
+      <Combobox value={value} onChange={onChange}>
         <ComboboxInput 
           className="border border-gray-300 rounded-md p-2 text-black" 
-          displayValue={(championId: number) => {
-            const champion = champions.find(champion => champion.api_id === championId);
-            return champion ? champion.name : '';
-          }}
+          displayValue={(champion: Champion | null) => champion?.name ?? ''}
         />
         <ComboboxOptions>
           {champions.map(champion => (
-            <ComboboxOption key={champion.api_id} value={champion.api_id}>{champion.name}</ComboboxOption>
+            <ComboboxOption key={champion.api_id} value={champion}>
+              {champion.name}
+            </ComboboxOption>
           ))}
         </ComboboxOptions>
       </Combobox>

@@ -38,7 +38,6 @@ function createInteraction(stats: WinStats, championId: number): ChampionInterac
   }
 
   let winProbability: number = 0.50
-  console.log(stats)
   if (stats.games > 0) {
     // Smoothing winrate
     winProbability = (stats.wins + 5) / (stats.games + 10)

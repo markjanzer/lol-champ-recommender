@@ -1,3 +1,8 @@
+export interface Champion {
+  name: string;
+  api_id: number;
+}
+
 export interface ChampionPerformance {
   championId: number;
   winProbability: number;
