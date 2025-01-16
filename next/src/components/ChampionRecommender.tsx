@@ -12,6 +12,7 @@ interface Props {
 export default function ChampionRecommender({championStats, champions}: Props) {
   const [allies, setAllies] = useState<(Champion | null)[]>([null, null, null, null, null]);
   const [enemies, setEnemies] = useState<(Champion | null)[]>([null, null, null, null, null]);
+  const [bans, setBans] = useState<(Champion | null)[]>([null, null, null, null, null, null, null, null, null, null]);
   const [recommendations, setRecommendations] = useState<ChampionPerformance[]>([]);
 
   const handleAllyChange = (index: number, value: Champion) => {
@@ -26,9 +27,16 @@ export default function ChampionRecommender({championStats, champions}: Props) {
     setEnemies(newEnemies);
   };
 
+  const handleBanChange = (index: number, value: Champion) => {
+    const newBans = [...bans];
+    newBans[index] = value;
+    setBans(newBans);
+  };
+
   useEffect(() => {
     const validAllies = allies.filter((ally): ally is Champion => ally !== null);
     const validEnemies = enemies.filter((enemy): enemy is Champion => enemy !== null);
+    const validBans = bans.filter((ban): ban is Champion => ban !== null);
 
     if (validAllies.length === 0 && validEnemies.length === 0) {
       setRecommendations([]);
@@ -38,10 +46,10 @@ export default function ChampionRecommender({championStats, champions}: Props) {
     const recommendations = recommendChampions(championStats, { 
       allies: validAllies.map(ally => ally.api_id), 
       enemies: validEnemies.map(enemy => enemy.api_id), 
-      bans: [] 
+      bans: validBans.map(ban => ban.api_id)
     });
     setRecommendations(recommendations);
-  }, [championStats, champions, allies, enemies]);
+  }, [championStats, champions, allies, enemies, bans]);
 
 
   const getChampionName = (apiId: number) => {
@@ -56,7 +64,7 @@ export default function ChampionRecommender({championStats, champions}: Props) {
     <>
       <div>
         <h1 className="text-2xl font-bold">Pick Champions</h1>
-        <div className="mt-4 grid grid-cols-2">
+        <div className="mt-4 grid grid-cols-3">
           <div className="col-span-1">
             <h2 className="text-lg font-bold">Allies</h2>
             {allies.map((ally, index) => (
@@ -76,6 +84,17 @@ export default function ChampionRecommender({championStats, champions}: Props) {
                 champions={champions} 
                 onChange={(champion) => handleEnemyChange(index, champion)} 
                 value={enemy} 
+              />
+            ))}
+          </div>
+          <div className="col-span-1">
+            <h2 className="text-lg font-bold">Bans</h2>
+            {bans.map((bannedChampion, index) => (
+              <ChampionCombobox 
+                key={index} 
+                champions={champions} 
+                onChange={(champion) => handleBanChange(index, champion)} 
+                value={bannedChampion} 
               />
             ))}
           </div>
