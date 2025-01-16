@@ -2,6 +2,7 @@
 import { Combobox, ComboboxInput, ComboboxOption, ComboboxOptions } from '@headlessui/react'
 import { Champion } from '@/lib/types/champions';
 import { useState } from 'react';
+import Fuse from 'fuse.js';
 interface Props {
   champions: Champion[]
   onChange: (value: Champion) => void;
@@ -10,15 +11,16 @@ interface Props {
 
 export default function ChampionCombobox({champions, onChange, value}: Props) {
   const [query, setQuery] = useState('');
-
-  const filteredChampions = query === ''
-    ? champions
-    : champions.filter((champion) =>
-        champion.name
-          .toLowerCase()
-          .includes(query.toLowerCase())
-      )
   
+  const fuse = new Fuse(champions, {
+    keys: ['name'],
+    threshold: 0.3
+  }); 
+  
+  const fuseResults = fuse.search(query)
+  const filteredChampions = fuseResults.map(result => result.item)
+
+    
   return (
     <div className="mt-2">
       <Combobox value={value} onChange={onChange}>
