@@ -3,6 +3,7 @@ import { useEffect, useState, Fragment } from "react";
 import { recommendChampions } from "@/lib/champions/recommendationEngine";
 import { ChampionDataMap, ChampionPerformance, Champion } from "@/lib/types/champions"
 import ChampionCombobox from "./ChampionCombobox";
+import ChampionRecommendation from "./ChampionRecommendation";
 
 interface Props {
   championStats: ChampionDataMap;
@@ -51,22 +52,13 @@ export default function ChampionRecommender({championStats, champions}: Props) {
     setRecommendations(recommendations);
   }, [championStats, champions, allies, enemies, bans]);
 
-
-  const getChampionName = (apiId: number) => {
-    return champions.find(champion => champion.api_id === apiId)?.name;
-  };
-
-  const formatWinrate = (winrate: number) => {
-    return `${(winrate * 100).toFixed(2)}%`;
-  };
-
   return (
-    <>
-      <div>
-        <h1 className="text-2xl font-bold">Pick Champions</h1>
-        <div className="mt-4 grid grid-cols-3">
-          <div className="col-span-1">
-            <h2 className="text-lg font-bold">Allies</h2>
+    <div className="grid grid-cols-5">
+      <div className="col-span-3">
+        <h1 className="text-2xl font-bold text-center">Selected Champions</h1>
+        <div className="mt-4 flex flex-row justify-around">
+          <div className="flex flex-col">
+            <h2 className="text-lg font-bold text-center">Allies</h2>
             {allies.map((ally, index) => (
               <ChampionCombobox 
                 key={index} 
@@ -76,8 +68,8 @@ export default function ChampionRecommender({championStats, champions}: Props) {
               />
             ))}
           </div>
-          <div className="col-span-1">
-            <h2 className="text-lg font-bold">Enemies</h2>
+          <div className="flex flex-col">
+            <h2 className="text-lg font-bold text-center">Enemies</h2>
             {enemies.map((enemy, index) => (
               <ChampionCombobox 
                 key={index} 
@@ -87,33 +79,45 @@ export default function ChampionRecommender({championStats, champions}: Props) {
               />
             ))}
           </div>
-          <div className="col-span-1">
-            <h2 className="text-lg font-bold">Bans</h2>
-            {bans.map((bannedChampion, index) => (
-              <ChampionCombobox 
-                key={index} 
-                champions={champions} 
-                onChange={(champion) => handleBanChange(index, champion)} 
-                value={bannedChampion} 
-              />
-            ))}
+        </div>
+        <div className="mt-8">
+          <h2 className="text-lg font-bold text-center">Bans</h2>
+          <div className="flex flex-row justify-around">
+            <div className="flex flex-col">
+              {bans.slice(0, 5).map((bannedChampion, index) => (
+                <ChampionCombobox 
+                  key={index} 
+                  champions={champions} 
+                  onChange={(champion) => handleBanChange(index, champion)} 
+                  value={bannedChampion} 
+                />
+              ))}
+            </div>
+            <div className="flex flex-col">
+              {bans.slice(5, 10).map((bannedChampion, index) => (
+                <ChampionCombobox 
+                  key={index + 5} 
+                  champions={champions} 
+                  onChange={(champion) => handleBanChange(index + 5, champion)} 
+                  value={bannedChampion} 
+                />
+              ))}
+            </div>
           </div>
         </div>
       </div>
-      <div className="mt-4">
+      <div className="col-span-2 border-l px-8">
         <h2 className="text-2xl font-bold">Recommended Champions</h2>
         <div className="mt-4">
           {recommendations.map((recommendation) => (
-            <div key={recommendation.championId}>
-              <p className="text-lg font-bold">{getChampionName(recommendation.championId)}: {formatWinrate(recommendation.winProbability)}</p>
-              <div>
-                <p>Synergies: [{recommendation.synergies.map(synergy => `${getChampionName(synergy.championId)} - ${formatWinrate(synergy.winProbability)}`).join(', ')}]</p>
-                <p>Matchups: [{recommendation.matchups.map(matchup => `${getChampionName(matchup.championId)} - ${formatWinrate(matchup.winProbability)}`).join(', ')}]</p>
-              </div>
-            </div>
+            <ChampionRecommendation 
+              key={recommendation.championId} 
+              championPerformance={recommendation} 
+              champions={champions}
+            />
           ))}
         </div>
       </div>
-    </>
+    </div>
   )
 }
