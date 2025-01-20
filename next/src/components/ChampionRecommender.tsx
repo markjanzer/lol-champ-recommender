@@ -53,8 +53,8 @@ export default function ChampionRecommender({championStats, champions}: Props) {
   }, [championStats, champions, allies, enemies, bans]);
 
   return (
-    <div className="grid grid-cols-5">
-      <div className="col-span-3">
+    <div className="grid md:grid-cols-5">
+      <div className="md:col-span-3">
         <h1 className="text-2xl font-bold text-center">Selected Champions</h1>
         <div className="mt-4 flex flex-row justify-around">
           <div className="flex flex-col">
@@ -106,7 +106,7 @@ export default function ChampionRecommender({championStats, champions}: Props) {
           </div>
         </div>
       </div>
-      <div className="col-span-2 border-l px-8">
+      <div className="md:col-span-2 md:border-l mt-8 md:mt-0 px-8">
         <h2 className="text-2xl font-bold">Recommended Champions</h2>
         <div className="mt-4">
           {recommendations.map((recommendation) => (
