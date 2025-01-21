@@ -4,21 +4,61 @@ import (
 	"context"
 	"encoding/json"
 	"log"
-	"lol-champ-recommender/db"
 	"lol-champ-recommender/internal/database"
 	"lol-champ-recommender/internal/recommender"
 	"os"
 )
 
-type ChampionJSON struct {
+type Champion struct {
 	Name  string `json:"name"`
 	ApiID int    `json:"api_id"`
 }
 
-func toChampionJSON(c db.AllChampionsRow) ChampionJSON {
-	return ChampionJSON{
-		Name:  c.Name,
-		ApiID: int(c.ApiID),
+func writeJSONToNext[T any](data T, filename string) error {
+	const basePath = "../next/src/data/"
+
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(basePath+filename, jsonData, 0644)
+}
+
+func writeChampionsToNext(ctx context.Context, dbConn *database.DB) {
+	dbChampions, err := dbConn.Queries.AllChampions(ctx)
+	if err != nil {
+		log.Println(err)
+	}
+
+	championJSONList := make([]Champion, len(dbChampions))
+	for i, champion := range dbChampions {
+		championJSONList[i] = Champion{
+			Name:  champion.Name,
+			ApiID: int(champion.ApiID),
+		}
+	}
+
+	err = writeJSONToNext(championJSONList, "champions.json")
+	if err != nil {
+		log.Println(err)
+	}
+}
+
+func writeChampionStatsToNext(ctx context.Context, dbConn *database.DB) {
+	championStats, err := dbConn.Queries.GetLastChampionStats(ctx)
+	if err != nil {
+		log.Println(err)
+	}
+
+	championStatsData, err := recommender.UnmarshalChampionStats(championStats.Data)
+	if err != nil {
+		log.Println(err)
+	}
+
+	err = writeJSONToNext(championStatsData, "champion_stats.json")
+	if err != nil {
+		log.Println(err)
 	}
 }
 
@@ -31,43 +71,6 @@ func main() {
 	}
 	defer dbConn.Close(ctx)
 
-	champions, err := dbConn.Queries.AllChampions(ctx)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	championJSONList := make([]ChampionJSON, len(champions))
-	for i, champion := range champions {
-		championJSONList[i] = toChampionJSON(champion)
-	}
-
-	jsonData, err := json.Marshal(championJSONList)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = os.WriteFile("../next/src/data/champions.json", jsonData, 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	championStats, err := dbConn.Queries.GetLastChampionStats(ctx)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	championStatsData, err := recommender.UnmarshalChampionStats(championStats.Data)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	jsonData, err = json.Marshal(championStatsData)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = os.WriteFile("../next/src/data/champion_stats.json", jsonData, 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
+	writeChampionsToNext(ctx, dbConn)
+	writeChampionStatsToNext(ctx, dbConn)
 }
