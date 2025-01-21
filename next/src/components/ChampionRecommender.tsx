@@ -34,6 +34,12 @@ export default function ChampionRecommender({championStats, champions}: Props) {
     setBans(newBans);
   };
 
+  const clearAll = () => {
+    setAllies([null, null, null, null, null]);
+    setEnemies([null, null, null, null, null]);
+    setBans([null, null, null, null, null, null, null, null, null, null]);
+  };
+
   useEffect(() => {
     const validAllies = allies.filter((ally): ally is Champion => ally !== null);
     const validEnemies = enemies.filter((enemy): enemy is Champion => enemy !== null);
@@ -104,6 +110,9 @@ export default function ChampionRecommender({championStats, champions}: Props) {
               ))}
             </div>
           </div>
+        </div>
+        <div className="mt-8 flex justify-center">
+          <button className="bg-gray-200 px-4 py-2 rounded-md" onClick={clearAll}>Clear</button>
         </div>
       </div>
       <div className="md:col-span-2 md:border-l mt-8 md:mt-0 px-8">
