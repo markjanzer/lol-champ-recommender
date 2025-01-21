@@ -6,15 +6,26 @@ This takes the current ally and enemy champions and recommends champions to play
 
 `/python` validates the the model accuracy by looking at full matches and their results and using the models to predict the winner. This has several currently defunct machine learning models.
 
+`/next` is the website.
+
 ## Usage
 To run go commands, navigate to the go directory and run
-```
+```bash
 go run cmd/<command>/main.go
 ```
 
 To run a python model, navigate to the python directory and run
-```
+```bash
 pipenv run python3 -m lolrecommender.models.<model_name>
+```
+
+## Updating the website's data
+```bash
+cd go
+go run cmd/create_champion_stats/main.go # Run this for however long to seed data
+go run cmd/write_json_to_next/main.go
+cd ../next
+vercel
 ```
 
 ## Go commands
@@ -47,7 +58,7 @@ type CreateMatchParams struct {
 	Red5ChampionID  int32
 }
 ```
-I'm not sure what types of matches are saved.
+Right now only ranked matches are saved.
 
 
 **create_champion_stats**
@@ -78,8 +89,12 @@ The jsonb of this object looks like this:
 **champ_recommender**
 This reads from the last champion stats object.
 It looks at all of the selected champions (with and against) and then (right now) it average the winrates for all synergies and matchups to determine the winrate for the given champion with this composition.
-Still not 100% sure how much data is returned here, do we offer matchup specific data? I think so but I'm not sure.
+For each champion it returns the overall averaged winrate, and then the synergies and matchups with their winrates.
 
 **reset_db**
 This drops all of the tables and creates new ones (except for champions)
+
+**write_json_to_next**
+This writes the champions and champion_stats to the nextjs data folder to be used by the website.
+```
 
