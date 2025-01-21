@@ -31,7 +31,9 @@ export default function RootLayout({
         type="image/<generated>"
         sizes="<generated>"
       />
-      <Script defer data-domain="champrecs.com" src="https://plausible.io/js/script.js" />
+      {process.env.NODE_ENV === 'production' && (
+        <Script defer data-domain="champrecs.com" src="https://plausible.io/js/script.js" />
+      )}
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
