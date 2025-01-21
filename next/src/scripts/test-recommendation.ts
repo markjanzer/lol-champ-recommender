@@ -1,10 +1,10 @@
-import db from '../lib/db'
 import { recommendChampions } from '../lib/champions/recommendationEngine'
+import championStats from '@/data/champion_stats.json'
 
 const main = async () => {
   try {
-    const championStats = await db.query('SELECT * FROM champion_stats ORDER BY id DESC LIMIT 1')
-    const lastChampionStats = championStats.rows[0].data
+
+    const lastChampionStats = championStats
 
     const champSelect = {
       bans: [63],
