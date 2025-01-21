@@ -37,7 +37,7 @@ func runRegionCrawler(ctx context.Context, region string, queries *db.Queries, a
 func main() {
 	ctx := context.Background()
 
-	err := godotenv.Load()
+	err := godotenv.Load("../.env")
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}

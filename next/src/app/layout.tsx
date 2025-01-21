@@ -25,6 +25,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <link
+        rel="icon"
+        href="/icon?<generated>"
+        type="image/<generated>"
+        sizes="<generated>"
+      />
       <Script defer data-domain="champrecs.com" src="https://plausible.io/js/script.js" />
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
