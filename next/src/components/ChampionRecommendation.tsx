@@ -5,14 +5,39 @@ interface Props {
   champions: Champion[];
 }
 
-// function formatWinrate(winrate: number) {
-//   return `${(winrate * 100).toFixed(2)}%`;
-// }
-
 interface ChampionStatTableProps {
   title: string;
   stats: Array<{championId: number; winProbability: number}>;
   getChampionName: (id: number) => string | undefined;
+}
+
+function getColor(winrate: number) {
+  let intensity = 0;
+  
+  if (winrate > 0.5) {
+    intensity = Math.min((winrate - 0.5) * 10, 1);
+  } else {
+    intensity = Math.min((0.5 - winrate) * 10, 1);
+  }
+
+  return winrate > 0.5 
+    ? `rgba(59, 130, 246, ${0.2 + intensity * 0.8})` // blue
+    : `rgba(249, 115, 22, ${0.2 + intensity * 0.8})`; // orange
+}
+
+function formatWinrate(winrate: number) {
+  return (winrate * 100).toFixed(2) + "%";
+}
+
+function renderWinrate(winrate: number) {
+  return (
+    <span 
+      className="underline" 
+      style={{ textDecorationColor: getColor(winrate) }}
+    >
+      {formatWinrate(winrate)}
+    </span>
+  );
 }
 
 function ChampionStatTable({ title, stats, getChampionName }: ChampionStatTableProps) {
@@ -36,31 +61,6 @@ function ChampionStatTable({ title, stats, getChampionName }: ChampionStatTableP
   );
 }
 
-function formatWinrate(winrate: number) {
-  let intensity = 0;
-  
-  if (winrate > 0.5) {
-    // Map 0.50 -> 0.2 (light blue) to 0.60 -> 1.0 (intense blue)
-    intensity = Math.min((winrate - 0.5) * 10, 1);
-  } else {
-    // Map 0.50 -> 0.2 (light orange) to 0.40 -> 1.0 (intense orange)
-    intensity = Math.min((0.5 - winrate) * 10, 1);
-  }
-  
-  const color = winrate > 0.5 
-    ? `rgba(59, 130, 246, ${0.2 + intensity * 0.8})` // blue
-    : `rgba(249, 115, 22, ${0.2 + intensity * 0.8})`; // orange
-    
-  return (
-    <span 
-      className="underline" 
-      style={{ textDecorationColor: color }}
-    >
-      {(winrate * 100).toFixed(2)}%
-    </span>
-  );
-}
-
 export default function ChampionRecommendation({championPerformance, champions}: Props) {
   const getChampionName = (apiId: number) => {
     return champions.find(champion => champion.api_id === apiId)?.name;
@@ -68,7 +68,7 @@ export default function ChampionRecommendation({championPerformance, champions}:
 
   return (
     <div key={championPerformance.championId} className="mt-4 border-b pb-4">
-      <p className="text-lg font-bold">{getChampionName(championPerformance.championId)} {formatWinrate(championPerformance.winProbability)}</p>
+      <p className="text-lg font-bold">{getChampionName(championPerformance.championId)} {renderWinrate(championPerformance.winProbability)}</p>
       <div className="flex flex-row justify-around mt-2">
         <ChampionStatTable
           title="Synergies" 
