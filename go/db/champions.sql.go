@@ -57,6 +57,35 @@ func (q *Queries) AllChampionRiotIds(ctx context.Context) ([]int32, error) {
 	return items, nil
 }
 
+const allChampions = `-- name: AllChampions :many
+SELECT api_id, name FROM champions
+`
+
+type AllChampionsRow struct {
+	ApiID int32
+	Name  string
+}
+
+func (q *Queries) AllChampions(ctx context.Context) ([]AllChampionsRow, error) {
+	rows, err := q.db.Query(ctx, allChampions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AllChampionsRow
+	for rows.Next() {
+		var i AllChampionsRow
+		if err := rows.Scan(&i.ApiID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getChampionsNotIn = `-- name: GetChampionsNotIn :many
 SELECT id, name, api_id, created_at FROM champions WHERE id NOT IN ($1)
 `

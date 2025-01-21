@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, Fragment } from "react";
+import { useEffect, useState } from "react";
 import { recommendChampions } from "@/lib/champions/recommendationEngine";
 import { ChampionDataMap, ChampionPerformance, Champion } from "@/lib/types/champions"
 import ChampionCombobox from "./ChampionCombobox";

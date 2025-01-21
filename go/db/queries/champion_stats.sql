@@ -6,6 +6,3 @@ INSERT INTO champion_stats (
 
 -- name: GetLastChampionStats :one
 SELECT * FROM champion_stats ORDER BY created_at DESC LIMIT 1;
-
--- name: AllChampions :many
-SELECT * FROM champions;
