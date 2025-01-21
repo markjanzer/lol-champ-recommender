@@ -11,9 +11,12 @@ interface Props {
 }
 
 export default function ChampionRecommender({championStats, champions}: Props) {
-  const [allies, setAllies] = useState<(Champion | null)[]>([null, null, null, null, null]);
-  const [enemies, setEnemies] = useState<(Champion | null)[]>([null, null, null, null, null]);
-  const [bans, setBans] = useState<(Champion | null)[]>([null, null, null, null, null, null, null, null, null, null]);
+  const TEAM_SIZE = 5;
+  const BANS_SIZE = 10;
+  
+  const [allies, setAllies] = useState<(Champion | null)[]>(Array(TEAM_SIZE).fill(null));
+  const [enemies, setEnemies] = useState<(Champion | null)[]>(Array(TEAM_SIZE).fill(null));
+  const [bans, setBans] = useState<(Champion | null)[]>(Array(BANS_SIZE).fill(null));
   const [recommendations, setRecommendations] = useState<ChampionPerformance[]>([]);
 
   const handleAllyChange = (index: number, value: Champion) => {
@@ -35,9 +38,9 @@ export default function ChampionRecommender({championStats, champions}: Props) {
   };
 
   const clearAll = () => {
-    setAllies([null, null, null, null, null]);
-    setEnemies([null, null, null, null, null]);
-    setBans([null, null, null, null, null, null, null, null, null, null]);
+    setAllies(Array(TEAM_SIZE).fill(null));
+    setEnemies(Array(TEAM_SIZE).fill(null));
+    setBans(Array(BANS_SIZE).fill(null));
   };
 
   useEffect(() => {
