@@ -40,6 +40,8 @@ export default function ChampionRecommender({championStats, champions}: Props) {
   const [bans, setBans] = useState<(Champion | null)[]>(Array(BANS_SIZE).fill(null));
   const [recommendations, setRecommendations] = useState<ChampionPerformance[]>([]);
 
+  const notEmpty = allies.some(ally => ally !== null) || enemies.some(enemy => enemy !== null) || bans.some(ban => ban !== null);
+
   const handleAllyChange = (index: number, value: Champion) => {
     const newAllies = [...allies];
     newAllies[index] = value;
@@ -135,8 +137,18 @@ export default function ChampionRecommender({championStats, champions}: Props) {
             </div>
           </div>
         </div>
-        <div className="mt-8 flex justify-center">
-          <button className="bg-gray-200 px-4 py-2 rounded-md" onClick={clearAll}>Clear</button>
+        {
+          notEmpty && (
+            <div className="mt-8 flex justify-center">
+              <button className="bg-gray-200 px-4 py-2 rounded-md" onClick={clearAll}>Clear</button>
+            </div>
+          )
+        }
+        <div className="my-8 flex flex-col items-center">
+          <h2 className="text-xl font-bold text-center mb-2">About Champ Recs</h2>
+          <p className="text-md max-w-prose">
+            This tool helps you make smarter champion selections in League of Legends by analyzing how well each potential pick performs with allies and against enemies. Drawing from over 100,000 ranked games, it calculates champion synergies and counters irrespective of role.
+          </p>
         </div>
       </div>
       <div className="md:col-span-2 md:border-l mt-8 md:mt-0 px-8">
