@@ -22,7 +22,8 @@ pipenv run python3 -m lolrecommender.models.<model_name>
 ## Updating the website's data
 ```bash
 cd go
-go run cmd/create_champion_stats/main.go # Run this for however long to seed data
+go run cmd/api_crawler/main.go # Run this for however long to seed data
+go run cmd/create_champion_stats/main.go
 go run cmd/write_json_to_next/main.go
 git push # Automatically triggers a vercel deploy if pushing to main branch
 ```

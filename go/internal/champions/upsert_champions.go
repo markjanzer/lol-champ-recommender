@@ -8,7 +8,8 @@ import (
 	"lol-champ-recommender/db"
 	"net/http"
 	"strconv"
-	"strings"
+
+	"lol-champ-recommender/internal/game_version"
 )
 
 type ChampionData struct {
@@ -21,10 +22,8 @@ type Champion struct {
 }
 
 // Turn a version like 14.18.618.2357 into 14.18.1
-func simplifyVersion(version string) string {
-	versionNumbers := strings.Split(version, ".")
-	simplifiedVersion := fmt.Sprintf("%s.%s.1", versionNumbers[0], versionNumbers[1])
-	return simplifiedVersion
+func toMajorMinorOne(version game_version.GameVersion) string {
+	return fmt.Sprintf("%d.%d.1", version.Major, version.Minor)
 }
 
 func championsURL(version string) string {
@@ -32,8 +31,7 @@ func championsURL(version string) string {
 }
 
 func upsertChampionsFromVersion(ctx context.Context, queries *db.Queries, version string) error {
-	simplifiedVersion := simplifyVersion(version)
-	championsURL := championsURL(simplifiedVersion)
+	championsURL := championsURL(version)
 
 	resp, err := http.Get(championsURL)
 	if err != nil {
@@ -70,11 +68,24 @@ func upsertChampionsFromVersion(ctx context.Context, queries *db.Queries, versio
 	return nil
 }
 
+func getLatestVersion(ctx context.Context, queries *db.Queries) (game_version.GameVersion, error) {
+	versions, err := queries.GetGameVersions(ctx)
+	if err != nil {
+		return game_version.GameVersion{}, err
+	}
+
+	return game_version.GetLatest(versions)
+}
+
 func UpsertChampions(ctx context.Context, queries *db.Queries) error {
-	lastMatch, err := queries.LastMatch(ctx)
+	version, err := getLatestVersion(ctx, queries)
 	if err != nil {
 		return err
 	}
 
-	return upsertChampionsFromVersion(ctx, queries, lastMatch.GameVersion)
+	shortenedVersion := toMajorMinorOne(version)
+	fmt.Println("Upserting champions from version", shortenedVersion)
+
+	err = upsertChampionsFromVersion(ctx, queries, shortenedVersion)
+	return err
 }

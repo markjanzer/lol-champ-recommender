@@ -47,3 +47,6 @@ LIMIT 1;
 
 -- name: MatchIDsUpToID :many
 SELECT matches.id FROM matches WHERE id <= $1;
+
+-- name: GetGameVersions :many
+SELECT DISTINCT game_version FROM matches;

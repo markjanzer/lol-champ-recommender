@@ -85,6 +85,30 @@ func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) error 
 	return err
 }
 
+const getGameVersions = `-- name: GetGameVersions :many
+SELECT DISTINCT game_version FROM matches
+`
+
+func (q *Queries) GetGameVersions(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, getGameVersions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var game_version string
+		if err := rows.Scan(&game_version); err != nil {
+			return nil, err
+		}
+		items = append(items, game_version)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getMatch = `-- name: GetMatch :one
 SELECT id, match_id, game_start, game_version, winning_team, queue_id, server_id, red_1_champion_id, red_2_champion_id, red_3_champion_id, red_4_champion_id, red_5_champion_id, blue_1_champion_id, blue_2_champion_id, blue_3_champion_id, blue_4_champion_id, blue_5_champion_id, created_at FROM matches WHERE id = $1
 `
