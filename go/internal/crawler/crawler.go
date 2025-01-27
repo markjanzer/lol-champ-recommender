@@ -77,7 +77,7 @@ func (c *Crawler) RunCrawler(runCtx context.Context) error {
 }
 
 func (c *Crawler) crawlPlayer(ctx context.Context, puuid string) error {
-	matchIDs, err := c.getRecentMatches(puuid)
+	matchIDs, err := c.recentMatches(puuid)
 	if err != nil {
 		return err
 	}
@@ -120,16 +120,16 @@ func saveMatch(queries *db.Queries, match *Match) error {
 		QueueID:         int32(match.Info.QueueID),
 		ServerID:        match.Info.PlatformID,
 		WinningTeam:     winningTeam,
-		Blue1ChampionID: getChampionId(match, 100, 1),
-		Blue2ChampionID: getChampionId(match, 100, 2),
-		Blue3ChampionID: getChampionId(match, 100, 3),
-		Blue4ChampionID: getChampionId(match, 100, 4),
-		Blue5ChampionID: getChampionId(match, 100, 5),
-		Red1ChampionID:  getChampionId(match, 200, 1),
-		Red2ChampionID:  getChampionId(match, 200, 2),
-		Red3ChampionID:  getChampionId(match, 200, 3),
-		Red4ChampionID:  getChampionId(match, 200, 4),
-		Red5ChampionID:  getChampionId(match, 200, 5),
+		Blue1ChampionID: championId(match, 100, 1),
+		Blue2ChampionID: championId(match, 100, 2),
+		Blue3ChampionID: championId(match, 100, 3),
+		Blue4ChampionID: championId(match, 100, 4),
+		Blue5ChampionID: championId(match, 100, 5),
+		Red1ChampionID:  championId(match, 200, 1),
+		Red2ChampionID:  championId(match, 200, 2),
+		Red3ChampionID:  championId(match, 200, 3),
+		Red4ChampionID:  championId(match, 200, 4),
+		Red5ChampionID:  championId(match, 200, 5),
 	}
 
 	err = queries.CreateMatch(context.Background(), createMatchParams)
@@ -141,7 +141,7 @@ func saveMatch(queries *db.Queries, match *Match) error {
 }
 
 // Helper function to get champion information
-func getChampionId(match *Match, teamID int, position int) int32 {
+func championId(match *Match, teamID int, position int) int32 {
 	count := 0
 	for _, participant := range match.Info.Participants {
 		if participant.TeamID == teamID {
@@ -167,8 +167,8 @@ func getWinningTeam(match *Match) (string, error) {
 	return "", fmt.Errorf("no winning team found for match: %s, end of game result: %s", match.Metadata.MatchID, match.Info.EndOfGameResult)
 }
 
-func (c *Crawler) getRecentMatches(puuid string) ([]string, error) {
-	body, err := c.Client.GetRecentMatches(puuid, 20)
+func (c *Crawler) recentMatches(puuid string) ([]string, error) {
+	body, err := c.Client.RecentMatches(puuid, 20)
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +192,7 @@ func (c *Crawler) createMatch(matchID string) error {
 		return nil
 	}
 
-	matchData, err := c.Client.GetMatchDetails(matchID)
+	matchData, err := c.Client.MatchDetails(matchID)
 	if err != nil {
 		return err
 	}
@@ -259,7 +259,7 @@ func (c *Crawler) findNextPlayer() (string, error) {
 	}
 
 	for _, match_id := range last_matches_ids {
-		matchData, err := c.Client.GetMatchDetails(match_id)
+		matchData, err := c.Client.MatchDetails(match_id)
 		if err != nil {
 			return "", err
 		}

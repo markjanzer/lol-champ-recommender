@@ -11,8 +11,8 @@ import (
 )
 
 func RecommendChampions(championStats recommender.ChampionDataMap, champSelect recommender.ChampSelect) ([]recommender.ChampionPerformance, error) {
-	allChampIds := getAllChampionIDs(championStats)
-	unavailableChampIDs := getUnavailableChampionIDs(champSelect)
+	allChampIds := allChampionIDs(championStats)
+	unavailableChampIDs := unavailableChampionIDs(champSelect)
 
 	var results []recommender.ChampionPerformance
 
@@ -21,7 +21,7 @@ func RecommendChampions(championStats recommender.ChampionDataMap, champSelect r
 			continue
 		}
 
-		performance, err := getChampionPerformance(champID, championStats, champSelect)
+		performance, err := championPerformance(champID, championStats, champSelect)
 		if err != nil {
 			return nil, fmt.Errorf("error getting performance for champion %d: %w", champID, err)
 		}
@@ -34,7 +34,7 @@ func RecommendChampions(championStats recommender.ChampionDataMap, champSelect r
 	return results, nil
 }
 
-func getAllChampionIDs(championStats recommender.ChampionDataMap) []int32 {
+func allChampionIDs(championStats recommender.ChampionDataMap) []int32 {
 	ids := make([]int32, 0, len(championStats))
 	for k := range championStats {
 		ids = append(ids, k)
@@ -42,25 +42,25 @@ func getAllChampionIDs(championStats recommender.ChampionDataMap) []int32 {
 	return ids
 }
 
-func getUnavailableChampionIDs(champSelect recommender.ChampSelect) []int32 {
+func unavailableChampionIDs(champSelect recommender.ChampSelect) []int32 {
 	result := append([]int32{}, champSelect.Allies...)
 	result = append(result, champSelect.Enemies...)
 	result = append(result, champSelect.Bans...)
 	return result
 }
 
-func getChampionPerformance(champID int32, championStats recommender.ChampionDataMap, champSelect recommender.ChampSelect) (recommender.ChampionPerformance, error) {
+func championPerformance(champID int32, championStats recommender.ChampionDataMap, champSelect recommender.ChampSelect) (recommender.ChampionPerformance, error) {
 	performance := recommender.ChampionPerformance{
 		ChampionID: champID,
 	}
 
-	synergies, err := getChampionInteractions(champID, championStats[champID].Synergies, champSelect.Allies)
+	synergies, err := championInteractions(champID, championStats[champID].Synergies, champSelect.Allies)
 	if err != nil {
 		return recommender.ChampionPerformance{}, err
 	}
 	performance.Synergies = synergies
 
-	matchups, err := getChampionInteractions(champID, championStats[champID].Matchups, champSelect.Enemies)
+	matchups, err := championInteractions(champID, championStats[champID].Matchups, champSelect.Enemies)
 	if err != nil {
 		return recommender.ChampionPerformance{}, err
 	}
@@ -71,7 +71,7 @@ func getChampionPerformance(champID int32, championStats recommender.ChampionDat
 	return performance, nil
 }
 
-func getChampionInteractions(champID int32, stats map[int32]recommender.WinStats, championIDs []int32) ([]recommender.ChampionInteraction, error) {
+func championInteractions(champID int32, stats map[int32]recommender.WinStats, championIDs []int32) ([]recommender.ChampionInteraction, error) {
 	var interactions []recommender.ChampionInteraction
 
 	for _, targetID := range championIDs {
@@ -142,7 +142,7 @@ func main() {
 	}
 	defer db.Close(ctx)
 
-	recordWithStats, err := db.Queries.GetLastChampionStats(ctx)
+	recordWithStats, err := db.Queries.LastChampionStats(ctx)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error getting last champion stats: %v\n", err)
 		os.Exit(1)

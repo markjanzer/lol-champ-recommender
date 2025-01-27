@@ -86,35 +86,6 @@ func (q *Queries) AllChampions(ctx context.Context) ([]AllChampionsRow, error) {
 	return items, nil
 }
 
-const getChampionsNotIn = `-- name: GetChampionsNotIn :many
-SELECT id, name, api_id, created_at FROM champions WHERE id NOT IN ($1)
-`
-
-func (q *Queries) GetChampionsNotIn(ctx context.Context, id int32) ([]Champion, error) {
-	rows, err := q.db.Query(ctx, getChampionsNotIn, id)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Champion
-	for rows.Next() {
-		var i Champion
-		if err := rows.Scan(
-			&i.ID,
-			&i.Name,
-			&i.ApiID,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const upsertChampion = `-- name: UpsertChampion :exec
 INSERT INTO champions (api_id, name)
 VALUES ($1, $2)

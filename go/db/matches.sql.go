@@ -85,12 +85,12 @@ func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) error 
 	return err
 }
 
-const getGameVersions = `-- name: GetGameVersions :many
+const gameVersions = `-- name: GameVersions :many
 SELECT DISTINCT game_version FROM matches
 `
 
-func (q *Queries) GetGameVersions(ctx context.Context) ([]string, error) {
-	rows, err := q.db.Query(ctx, getGameVersions)
+func (q *Queries) GameVersions(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, gameVersions)
 	if err != nil {
 		return nil, err
 	}
@@ -107,55 +107,6 @@ func (q *Queries) GetGameVersions(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 	return items, nil
-}
-
-const getMatch = `-- name: GetMatch :one
-SELECT id, match_id, game_start, game_version, winning_team, queue_id, server_id, red_1_champion_id, red_2_champion_id, red_3_champion_id, red_4_champion_id, red_5_champion_id, blue_1_champion_id, blue_2_champion_id, blue_3_champion_id, blue_4_champion_id, blue_5_champion_id, created_at FROM matches WHERE id = $1
-`
-
-func (q *Queries) GetMatch(ctx context.Context, id int32) (Match, error) {
-	row := q.db.QueryRow(ctx, getMatch, id)
-	var i Match
-	err := row.Scan(
-		&i.ID,
-		&i.MatchID,
-		&i.GameStart,
-		&i.GameVersion,
-		&i.WinningTeam,
-		&i.QueueID,
-		&i.ServerID,
-		&i.Red1ChampionID,
-		&i.Red2ChampionID,
-		&i.Red3ChampionID,
-		&i.Red4ChampionID,
-		&i.Red5ChampionID,
-		&i.Blue1ChampionID,
-		&i.Blue2ChampionID,
-		&i.Blue3ChampionID,
-		&i.Blue4ChampionID,
-		&i.Blue5ChampionID,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const getMatchAtPercentileID = `-- name: GetMatchAtPercentileID :one
-SELECT id
-FROM (
-  SELECT id, NTILE(100) OVER (ORDER BY id) AS tile
-  FROM matches
-) subq
-WHERE tile = $1::INTEGER
-ORDER BY id DESC
-LIMIT 1
-`
-
-// Need to cast integer due to https://github.com/sqlc-dev/sqlc/issues/3169
-func (q *Queries) GetMatchAtPercentileID(ctx context.Context, dollar_1 int32) (int32, error) {
-	row := q.db.QueryRow(ctx, getMatchAtPercentileID, dollar_1)
-	var id int32
-	err := row.Scan(&id)
-	return id, err
 }
 
 const lastMatch = `-- name: LastMatch :one
@@ -210,6 +161,55 @@ func (q *Queries) LastMatchesFromServer(ctx context.Context, serverID string) ([
 		return nil, err
 	}
 	return items, nil
+}
+
+const match = `-- name: Match :one
+SELECT id, match_id, game_start, game_version, winning_team, queue_id, server_id, red_1_champion_id, red_2_champion_id, red_3_champion_id, red_4_champion_id, red_5_champion_id, blue_1_champion_id, blue_2_champion_id, blue_3_champion_id, blue_4_champion_id, blue_5_champion_id, created_at FROM matches WHERE id = $1
+`
+
+func (q *Queries) Match(ctx context.Context, id int32) (Match, error) {
+	row := q.db.QueryRow(ctx, match, id)
+	var i Match
+	err := row.Scan(
+		&i.ID,
+		&i.MatchID,
+		&i.GameStart,
+		&i.GameVersion,
+		&i.WinningTeam,
+		&i.QueueID,
+		&i.ServerID,
+		&i.Red1ChampionID,
+		&i.Red2ChampionID,
+		&i.Red3ChampionID,
+		&i.Red4ChampionID,
+		&i.Red5ChampionID,
+		&i.Blue1ChampionID,
+		&i.Blue2ChampionID,
+		&i.Blue3ChampionID,
+		&i.Blue4ChampionID,
+		&i.Blue5ChampionID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const matchAtPercentileID = `-- name: MatchAtPercentileID :one
+SELECT id
+FROM (
+  SELECT id, NTILE(100) OVER (ORDER BY id) AS tile
+  FROM matches
+) subq
+WHERE tile = $1::INTEGER
+ORDER BY id DESC
+LIMIT 1
+`
+
+// Need to cast integer due to https://github.com/sqlc-dev/sqlc/issues/3169
+func (q *Queries) MatchAtPercentileID(ctx context.Context, dollar_1 int32) (int32, error) {
+	row := q.db.QueryRow(ctx, matchAtPercentileID, dollar_1)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
 }
 
 const matchExists = `-- name: MatchExists :one

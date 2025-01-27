@@ -93,7 +93,7 @@ func (c *RiotClient) request(url string) ([]byte, error) {
 	return body, nil
 }
 
-func (c *RiotClient) GetRecentMatches(puuid string, count int) ([]byte, error) {
+func (c *RiotClient) RecentMatches(puuid string, count int) ([]byte, error) {
 	match_type := "ranked"
 	url := fmt.Sprintf("%s/lol/match/v5/matches/by-puuid/%s/ids?count=%d&type=%s",
 		fmt.Sprintf(baseURL, c.Region), puuid, count, match_type)
@@ -106,7 +106,7 @@ func (c *RiotClient) GetRecentMatches(puuid string, count int) ([]byte, error) {
 	return body, nil
 }
 
-func (c *RiotClient) GetMatchDetails(matchID string) ([]byte, error) {
+func (c *RiotClient) MatchDetails(matchID string) ([]byte, error) {
 	url := fmt.Sprintf("%s/lol/match/v5/matches/%s",
 		fmt.Sprintf(baseURL, c.Region), matchID)
 

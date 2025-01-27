@@ -167,7 +167,7 @@ func main() {
 
 	// Limit the amount of matches we process to separate training and test matches
 	var percentile int32 = 100
-	lastMatchID, err := dbConn.Queries.GetMatchAtPercentileID(ctx, percentile)
+	lastMatchID, err := dbConn.Queries.MatchAtPercentileID(ctx, percentile)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error getting match at percentile %d: %v\n", percentile, err)
 		os.Exit(1)
@@ -180,7 +180,7 @@ func main() {
 	}
 
 	for _, id := range match_ids {
-		match, err := dbConn.Queries.GetMatch(ctx, id)
+		match, err := dbConn.Queries.Match(ctx, id)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error getting match with id %d: %v\n", id, err)
 			os.Exit(1)

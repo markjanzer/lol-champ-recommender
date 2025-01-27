@@ -46,7 +46,7 @@ func writeChampionsToNext(ctx context.Context, dbConn *database.DB) {
 }
 
 func writeChampionStatsToNext(ctx context.Context, dbConn *database.DB) {
-	championStats, err := dbConn.Queries.GetLastChampionStats(ctx)
+	championStats, err := dbConn.Queries.LastChampionStats(ctx)
 	if err != nil {
 		log.Println(err)
 	}

@@ -1,4 +1,4 @@
-package game_version
+package version
 
 import (
 	"fmt"

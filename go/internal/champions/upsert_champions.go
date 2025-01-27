@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"lol-champ-recommender/internal/game_version"
+	"lol-champ-recommender/internal/version"
 )
 
 type ChampionData struct {
@@ -22,7 +22,7 @@ type Champion struct {
 }
 
 // Turn a version like 14.18.618.2357 into 14.18.1
-func toMajorMinorOne(version game_version.GameVersion) string {
+func toMajorMinorOne(version version.GameVersion) string {
 	return fmt.Sprintf("%d.%d.1", version.Major, version.Minor)
 }
 
@@ -68,17 +68,17 @@ func upsertChampionsFromVersion(ctx context.Context, queries *db.Queries, versio
 	return nil
 }
 
-func getLatestVersion(ctx context.Context, queries *db.Queries) (game_version.GameVersion, error) {
-	versions, err := queries.GetGameVersions(ctx)
+func latestVersion(ctx context.Context, queries *db.Queries) (version.GameVersion, error) {
+	versions, err := queries.GameVersions(ctx)
 	if err != nil {
-		return game_version.GameVersion{}, err
+		return version.GameVersion{}, err
 	}
 
-	return game_version.GetLatest(versions)
+	return version.GetLatest(versions)
 }
 
 func UpsertChampions(ctx context.Context, queries *db.Queries) error {
-	version, err := getLatestVersion(ctx, queries)
+	version, err := latestVersion(ctx, queries)
 	if err != nil {
 		return err
 	}

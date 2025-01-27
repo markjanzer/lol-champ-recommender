@@ -26,12 +26,12 @@ func (q *Queries) CreateChampionStats(ctx context.Context, arg CreateChampionSta
 	return err
 }
 
-const getLastChampionStats = `-- name: GetLastChampionStats :one
+const lastChampionStats = `-- name: LastChampionStats :one
 SELECT id, data, last_match_id, created_at FROM champion_stats ORDER BY created_at DESC LIMIT 1
 `
 
-func (q *Queries) GetLastChampionStats(ctx context.Context) (ChampionStat, error) {
-	row := q.db.QueryRow(ctx, getLastChampionStats)
+func (q *Queries) LastChampionStats(ctx context.Context) (ChampionStat, error) {
+	row := q.db.QueryRow(ctx, lastChampionStats)
 	var i ChampionStat
 	err := row.Scan(
 		&i.ID,

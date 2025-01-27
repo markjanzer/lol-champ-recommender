@@ -4,5 +4,5 @@ INSERT INTO champion_stats (
   last_match_id
 ) VALUES ($1, $2);
 
--- name: GetLastChampionStats :one
+-- name: LastChampionStats :one
 SELECT * FROM champion_stats ORDER BY created_at DESC LIMIT 1;
