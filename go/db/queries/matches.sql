@@ -50,3 +50,6 @@ SELECT matches.id FROM matches WHERE id <= $1;
 
 -- name: GameVersions :many
 SELECT DISTINCT game_version FROM matches;
+
+-- name: RandomMatchIDFromServer :one
+SELECT matches.match_id FROM matches WHERE server_id = $1 ORDER BY RANDOM() LIMIT 1;

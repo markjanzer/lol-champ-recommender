@@ -19,6 +19,8 @@ import (
 
 var regions = []string{"americas", "asia", "europe", "sea"}
 
+// var regions = []string{"americas"}
+
 func runRegionCrawler(ctx context.Context, region string, queries *db.Queries, apiKey string) error {
 	client, err := api.NewRiotClient(apiKey, region, ctx)
 	if err != nil {

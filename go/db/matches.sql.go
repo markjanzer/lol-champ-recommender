@@ -246,3 +246,14 @@ func (q *Queries) MatchIDsUpToID(ctx context.Context, id int32) ([]int32, error)
 	}
 	return items, nil
 }
+
+const randomMatchIDFromServer = `-- name: RandomMatchIDFromServer :one
+SELECT matches.match_id FROM matches WHERE server_id = $1 ORDER BY RANDOM() LIMIT 1
+`
+
+func (q *Queries) RandomMatchIDFromServer(ctx context.Context, serverID string) (string, error) {
+	row := q.db.QueryRow(ctx, randomMatchIDFromServer, serverID)
+	var match_id string
+	err := row.Scan(&match_id)
+	return match_id, err
+}

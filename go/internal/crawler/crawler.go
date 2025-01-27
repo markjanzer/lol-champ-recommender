@@ -169,6 +169,7 @@ func getWinningTeam(match *Match) (string, error) {
 
 func (c *Crawler) recentMatches(puuid string) ([]string, error) {
 	body, err := c.Client.RecentMatches(puuid, 20)
+	fmt.Println(string(body))
 	if err != nil {
 		return nil, err
 	}
@@ -234,6 +235,49 @@ func (c *Crawler) seedAccount() (SeedAccount, error) {
 	return seedAccounts[c.Client.Region], nil
 }
 
+func (c *Crawler) shouldSearch(puuid string) (bool, error) {
+	has_been_searched, err := c.Queries.PlayerHasBeenSearched(c.Ctx, puuid)
+	if err != nil {
+		return false, fmt.Errorf("error checking if player has been searched: %v", err)
+	}
+	if !has_been_searched {
+		return true, nil
+	}
+
+	last_searched, err := c.Queries.LastSearched(c.Ctx, puuid)
+	if err != nil {
+		return false, fmt.Errorf("error getting last searched: %v", err)
+	}
+
+	fmt.Printf("PUUID: %s, Last searched: %s\n", puuid, last_searched.Time)
+
+	// Search puuid if it's been longer than 48 hours since last search
+	if time.Since(last_searched.Time) > 48*time.Hour {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+func (c *Crawler) extractPUUIDsFromMatch(match_id string) ([]string, error) {
+	matchData, err := c.Client.MatchDetails(match_id)
+	if err != nil {
+		return nil, err
+	}
+
+	var matchPuuids MatchPuuids
+	if err := json.Unmarshal(matchData, &matchPuuids); err != nil {
+		return nil, fmt.Errorf("error unmarshalling match data: %w", err)
+	}
+
+	var puuids []string
+	for _, puuid := range matchPuuids.Info.Participants {
+		puuids = append(puuids, puuid.Puuid)
+	}
+
+	return puuids, nil
+}
+
 // This is a little confusing, because we are passing regions, but currently each region has one server
 // and the server is what is stored in the matches table. So for a given region we will find the relevant
 // server via the seed accounts, and then see if there are any matches from that server.
@@ -246,52 +290,37 @@ func (c *Crawler) findNextPlayer() (string, error) {
 
 	any_matches, err := c.Queries.AnyMatchesFromServer(c.Ctx, server)
 	if err != nil {
-		return "", fmt.Errorf("find next player: %w", err)
+		return "", fmt.Errorf("error checking if any matches found for server: %v", err)
 	}
 	if !any_matches {
 		fmt.Println("No matches found for server", server)
 		return seedAccount.PUUID, nil
 	}
 
-	last_matches_ids, err := c.Queries.LastMatchesFromServer(c.Ctx, server)
-	if err != nil {
-		return "", fmt.Errorf("error getting last matches: %v", err)
-	}
-
-	for _, match_id := range last_matches_ids {
-		matchData, err := c.Client.MatchDetails(match_id)
+	i := 0
+	for i < 100 {
+		match_id, err := c.Queries.RandomMatchIDFromServer(c.Ctx, server)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("error getting random match: %v", err)
 		}
 
-		var matchPuuids MatchPuuids
-		if err := json.Unmarshal(matchData, &matchPuuids); err != nil {
-			return "", fmt.Errorf("error unmarshalling match data: %w", err)
-		}
-
-		var puuids []string
-		for _, puuid := range matchPuuids.Info.Participants {
-			puuids = append(puuids, puuid.Puuid)
+		puuids, err := c.extractPUUIDsFromMatch(match_id)
+		if err != nil {
+			return "", fmt.Errorf("error extracting PUUIDs from match: %v", err)
 		}
 
 		for _, puuid := range puuids {
-			has_been_searched, err := c.Queries.PlayerHasBeenSearched(c.Ctx, puuid)
+			should_search, err := c.shouldSearch(puuid)
 			if err != nil {
-				return "", fmt.Errorf("error checking if player has been searched: %v", err)
+				return "", fmt.Errorf("error checking if player should be searched: %v", err)
 			}
-			if !has_been_searched {
-				return puuid, nil
-			}
-
-			last_searched, err := c.Queries.LastSearched(c.Ctx, puuid)
-			if err != nil {
-				return "", fmt.Errorf("error getting last searched: %v", err)
-			}
-			// Search puuid if it's been longer than 21 days since last search
-			if time.Since(last_searched.Time) > 504*time.Hour {
+			if should_search {
 				return puuid, nil
 			}
 		}
+
+		i++
 	}
+
 	return "", fmt.Errorf("no new players found")
 }

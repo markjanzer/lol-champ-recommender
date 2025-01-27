@@ -9,30 +9,6 @@ import (
 	"context"
 )
 
-const allChampionIds = `-- name: AllChampionIds :many
-SELECT id FROM champions
-`
-
-func (q *Queries) AllChampionIds(ctx context.Context) ([]int32, error) {
-	rows, err := q.db.Query(ctx, allChampionIds)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []int32
-	for rows.Next() {
-		var id int32
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		items = append(items, id)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const allChampionRiotIds = `-- name: AllChampionRiotIds :many
 SELECT api_id FROM champions
 `
