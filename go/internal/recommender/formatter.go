@@ -8,7 +8,7 @@ import (
 )
 
 func FormatAnswer(ctx context.Context, queries *db.Queries, champSelect ChampSelect, results []ChampionPerformance) error {
-	champsToIDs, err := mapChampionsToIds(ctx, queries)
+	champsToIDs, err := mapChampionsToIDs(ctx, queries)
 	if err != nil {
 		return fmt.Errorf("error mapping champions to IDs: %v", err)
 	}
@@ -42,7 +42,7 @@ func FormatAnswer(ctx context.Context, queries *db.Queries, champSelect ChampSel
 	return nil
 }
 
-func mapChampionsToIds(ctx context.Context, queries *db.Queries) (map[string]int32, error) {
+func mapChampionsToIDs(ctx context.Context, queries *db.Queries) (map[string]int32, error) {
 	champions, err := queries.AllChampions(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error getting all champions: %v", err)

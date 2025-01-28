@@ -120,16 +120,16 @@ func saveMatch(queries *db.Queries, match *Match) error {
 		QueueID:         int32(match.Info.QueueID),
 		ServerID:        match.Info.PlatformID,
 		WinningTeam:     winningTeam,
-		Blue1ChampionID: championId(match, 100, 1),
-		Blue2ChampionID: championId(match, 100, 2),
-		Blue3ChampionID: championId(match, 100, 3),
-		Blue4ChampionID: championId(match, 100, 4),
-		Blue5ChampionID: championId(match, 100, 5),
-		Red1ChampionID:  championId(match, 200, 1),
-		Red2ChampionID:  championId(match, 200, 2),
-		Red3ChampionID:  championId(match, 200, 3),
-		Red4ChampionID:  championId(match, 200, 4),
-		Red5ChampionID:  championId(match, 200, 5),
+		Blue1ChampionID: championID(match, 100, 1),
+		Blue2ChampionID: championID(match, 100, 2),
+		Blue3ChampionID: championID(match, 100, 3),
+		Blue4ChampionID: championID(match, 100, 4),
+		Blue5ChampionID: championID(match, 100, 5),
+		Red1ChampionID:  championID(match, 200, 1),
+		Red2ChampionID:  championID(match, 200, 2),
+		Red3ChampionID:  championID(match, 200, 3),
+		Red4ChampionID:  championID(match, 200, 4),
+		Red5ChampionID:  championID(match, 200, 5),
 	}
 
 	err = queries.CreateMatch(context.Background(), createMatchParams)
@@ -141,7 +141,7 @@ func saveMatch(queries *db.Queries, match *Match) error {
 }
 
 // Helper function to get champion information
-func championId(match *Match, teamID int, position int) int32 {
+func championID(match *Match, teamID int, position int) int32 {
 	count := 0
 	for _, participant := range match.Info.Participants {
 		if participant.TeamID == teamID {

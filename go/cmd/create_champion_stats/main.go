@@ -25,18 +25,18 @@ type ChampionData struct {
 type ChampionDataMap map[int32]ChampionData
 
 func initChampionStats(ctx context.Context, queries *db.Queries) (ChampionDataMap, error) {
-	riotIds, err := queries.AllChampionRiotIds(ctx)
+	riotIDs, err := queries.AllChampionRiotIDs(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all champion ids: %w", err)
 	}
 
 	championStats := make(ChampionDataMap)
-	for _, id := range riotIds {
+	for _, id := range riotIDs {
 		championStats[id] = ChampionData{
 			Matchups:  make(map[int32]WinStats),
 			Synergies: make(map[int32]WinStats),
 		}
-		for _, id2 := range riotIds {
+		for _, id2 := range riotIDs {
 			championStats[id].Matchups[id2] = WinStats{0, 0}
 			championStats[id].Synergies[id2] = WinStats{0, 0}
 		}

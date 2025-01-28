@@ -11,12 +11,12 @@ import (
 )
 
 func RecommendChampions(championStats recommender.ChampionDataMap, champSelect recommender.ChampSelect) ([]recommender.ChampionPerformance, error) {
-	allChampIds := allChampionIDs(championStats)
+	allChampIDs := allChampionIDs(championStats)
 	unavailableChampIDs := unavailableChampionIDs(champSelect)
 
 	var results []recommender.ChampionPerformance
 
-	for _, champID := range allChampIds {
+	for _, champID := range allChampIDs {
 		if contains(unavailableChampIDs, champID) {
 			continue
 		}

@@ -9,12 +9,12 @@ import (
 	"context"
 )
 
-const allChampionRiotIds = `-- name: AllChampionRiotIds :many
+const allChampionRiotIDs = `-- name: AllChampionRiotIDs :many
 SELECT api_id FROM champions
 `
 
-func (q *Queries) AllChampionRiotIds(ctx context.Context) ([]int32, error) {
-	rows, err := q.db.Query(ctx, allChampionRiotIds)
+func (q *Queries) AllChampionRiotIDs(ctx context.Context) ([]int32, error) {
+	rows, err := q.db.Query(ctx, allChampionRiotIDs)
 	if err != nil {
 		return nil, err
 	}
