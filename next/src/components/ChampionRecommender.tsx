@@ -140,7 +140,7 @@ export default function ChampionRecommender({championStats, champions}: Props) {
         {
           notEmpty && (
             <div className="mt-8 flex justify-center">
-              <button className="bg-gray-200 px-4 py-2 rounded-md" onClick={clearAll}>Clear</button>
+              <button className="bg-gray-200 dark:bg-gray-800 px-4 py-2 rounded-md" onClick={clearAll}>Clear</button>
             </div>
           )
         }

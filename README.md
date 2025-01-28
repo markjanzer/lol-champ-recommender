@@ -96,5 +96,4 @@ This drops all of the tables and creates new ones (except for champions)
 
 **write_json_to_next**
 This writes the champions and champion_stats to the nextjs data folder to be used by the website.
-```
 
